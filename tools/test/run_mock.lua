@@ -102,9 +102,23 @@ local magazine = newObject("BP_Magazine_AKM_C", nil, {}, {
 })
 local Actors = { weapon1, weapon2, magazine }
 
-local pawn = newObject("BP_Player_C", "Player")
+local function newPlayerState(name)
+    return newObject("PlayerState", "PS_" .. name, {}, {
+        GetPlayerName = function() return { ToString = function() return name end } end,
+    })
+end
+local psMe, psBob = newPlayerState("Me"), newPlayerState("Bob")
+PlayerStates = { psMe, psBob }
+
+local pawn = newObject("BP_Player_C", "Player", { PlayerState = psMe })
+local bobPawn = newObject("BP_Player_C", "BobPawn", { PlayerState = psBob })
+-- On a co-op host the remote player's controller exists here too and must be skipped.
+remotePC = newObject("PlayerController", "BobPC", { Pawn = bobPawn, PlayerState = psBob }, {
+    IsLocalController = function() return false end,
+})
 local pc = newObject("PlayerController", "PC", {
     Pawn = pawn,
+    PlayerState = psMe,
     PlayerCameraManager = { GetCameraLocation = function() return { X = 0, Y = 0, Z = 0 } end },
 })
 
@@ -167,7 +181,8 @@ function StaticFindObject(path)
 end
 
 function FindAllOf(name)
-    if name == "PlayerController" then return { pc } end
+    if name == "PlayerController" then return { remotePC, pc } end
+    if name == "PlayerState" then return PlayerStates end
     if name == "Actor" then return Actors end
     local out = {}
     for _, a in ipairs(Actors) do
@@ -287,6 +302,76 @@ local scope = weapon1:K2_GetComponentsByClass()
 local glassUntouched = true
 scope:ForEach(function(_, e) local c = e:get() if c._mats[1] ~= miGlass and c._name ~= "WeaponMesh" then glassUntouched = false end end)
 check(glassUntouched, "glass/lens materials are left alone")
+
+------------------------------------------------------------------ co-op sync
+
+local function setHolder(actor, holderPawn)
+    rawset(actor, "GetAttachParentActor", function() return holderPawn end)
+end
+local function readAll(path)
+    local f = io.open(path, "rb")
+    if not f then return nil end
+    local d = f:read("a") f:close() return d
+end
+local function writeAll(path, data)
+    local f = assert(io.open(path, "wb")) f:write(data) f:close()
+end
+local function camoDrawnFor(texName)
+    for _, d in ipairs(Draws) do if d.Tex == texName and d.Blend == 2 then return true end end
+    return false
+end
+
+-- Bob's mod already published his profile; camo_sync.py mirrored it here.
+local bobDir = tmp .. "/Sync/Bob"
+os.execute(string.format("mkdir -p %q", bobDir .. "/images"))
+os.execute(string.format("cp %q %q", tmp .. "/Camo/07_Tiger.png", bobDir .. "/images/c_bob_tiger.png"))
+local bobProfile = table.concat({
+    "CAS-PROFILE\t1", "player\tBob",
+    "preset\tBP_Weapon_AKM_C\tBobTiger\t3.0000\t1.0000",
+    "sticker\tBP_Weapon_AKM_C\tEvil\t0.5\t0.5\t0.2\t0\t1",
+    "image\tcamo\tBobTiger\tc_bob_tiger.png",
+    "image\tsticker\tEvil\t../../../evil.png",
+}, "\n") .. "\n"
+writeAll(bobDir .. "/profile.txt", bobProfile)
+
+setHolder(weapon1, pawn)
+setHolder(weapon2, bobPawn)
+package.loaded.config.Sync.Enabled = true
+
+Draws = {}
+press("KEY_F5") -- my AKM gets my camo (01_Woodland after the reset above)
+Loops[1]()      -- sync tick: learn my name, publish, read Bob's profile, repaint
+
+check(readAll(tmp .. "/Sync/.me") == "Me", "mod writes Sync/.me with the local player's folder (not the host's remote player)")
+local mine = readAll(tmp .. "/Sync/Me/profile.txt") or ""
+check(mine:find("preset\tBP_Weapon_AKM_C\t01_Woodland", 1, true), "my profile.txt lists my preset")
+check(readAll(tmp .. "/Sync/Me/images/c_01_Woodland.png") ~= nil, "the camo picture I use is copied for the others")
+check(weapon2._body._mats[1]._name:find("^CAS_MID_") and camoDrawnFor("c_bob_tiger"),
+    "the AKM in Bob's hands is painted with Bob's synced camo")
+check(weapon1._body._mats[1]._name:find("^CAS_MID_") and camoDrawnFor("01_Woodland"), "my AKM keeps my camo")
+local importedEvil = false
+for _, path in ipairs(Imports) do if path:find("evil") then importedEvil = true end end
+check(not importedEvil, "a path-traversal image name in a remote profile is ignored")
+
+-- Bob drops his gun: it keeps his look.
+setHolder(weapon2, nil)
+local before = weapon2._body._mats[1]
+Loops[1]()
+check(weapon2._body._mats[1] == before, "a dropped gun keeps the look of its last holder")
+
+-- Bob switches to factory finish.
+writeAll(bobDir .. "/profile.txt", "CAS-PROFILE\t1\nplayer\tBob\n")
+Loops[1]()
+check(weapon2._body._mats[1] == miReceiver, "Bob removing his camo resets his gun on my screen")
+check(weapon1._body._mats[1]._name:find("^CAS_MID_"), "...and doesn't touch mine")
+
+-- Bob leaves the session.
+writeAll(bobDir .. "/profile.txt", bobProfile)
+Loops[1]()
+check(weapon2._body._mats[1]._name:find("^CAS_MID_"), "Bob's profile change back is picked up")
+table.remove(PlayerStates, 2)
+Loops[1]()
+check(weapon2._body._mats[1] == miReceiver, "when Bob leaves, his gun falls back to factory (PlayersWithoutMod)")
 
 os.execute(string.format("rm -rf %q", tmp))
 realPrint(failures == 0 and "\nAll checks passed." or ("\n" .. failures .. " check(s) failed."))

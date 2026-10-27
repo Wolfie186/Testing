@@ -9,6 +9,22 @@ return {
     CustomCamoFolders = {},
     CustomStickerFolders = {},
 
+    -- Co-op sync: everyone with the mod sees the camo each player picked for the gun in
+    -- their hands. See README ("Мультиплеер") for setup: SyncTool\host.bat on the host,
+    -- SyncTool\join.bat on the others, or point Folder at a shared cloud folder.
+    Sync = {
+        Enabled = false,
+        -- Shared folder with one subfolder per player. Empty = <mod folder>\Sync,
+        -- which is where SyncTool\camo_sync.py mirrors to by default.
+        Folder = "",
+        -- Guns nobody holds (on the ground, in shops): "mine" = your preset, "factory".
+        UnownedWeapons = "mine",
+        -- Guns held by a player whose profile isn't synced (no mod): "factory" or "mine".
+        PlayersWithoutMod = "factory",
+        -- A dropped gun keeps the look of the last player who held it.
+        KeepLastOwner = true,
+    },
+
     -- "composite": camo is blended over the weapon's original texture and stickers are
     --              drawn on top (needs the weapon material to expose a base color texture param).
     -- "replace":   the base color texture is simply swapped for the camo texture.

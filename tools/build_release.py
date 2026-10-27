@@ -10,6 +10,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MOD = os.path.join(ROOT, "CamoAndStickers")
 PREFIX = "IntoTheRadius2/Binaries/Win64/ue4ss/Mods/CamoAndStickers"
 SKIP = {"presets.lua"}
+SKIP_DIRS = {"Sync", "__pycache__"}
 
 
 def main():
@@ -17,7 +18,8 @@ def main():
     os.makedirs(os.path.join(ROOT, "dist"), exist_ok=True)
     out = os.path.join(ROOT, "dist", f"CamoAndStickers-{version}.zip")
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
-        for dirpath, _, files in os.walk(MOD):
+        for dirpath, dirs, files in os.walk(MOD):
+            dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
             for name in sorted(files):
                 if name in SKIP:
                     continue
