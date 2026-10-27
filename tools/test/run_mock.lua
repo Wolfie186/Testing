@@ -186,6 +186,15 @@ local tmp = os.tmpname()
 os.remove(tmp)
 os.execute(string.format("mkdir -p %q && cp -r %q/. %q", tmp, MOD_DIR, tmp))
 os.remove(tmp .. "/presets.lua")
+-- A user sticker folder outside the mod, holding a JPG.
+local customDir = tmp .. "/MyStickers"
+os.execute(string.format("mkdir -p %q && cp %q %q", customDir, tmp .. "/Stickers/04_Skull.png", customDir .. "/99_MyLogo.jpg"))
+do
+    local cfgPath = tmp .. "/Scripts/config.lua"
+    local f = assert(io.open(cfgPath)) local cfg = f:read("a") f:close()
+    cfg = cfg:gsub("CustomStickerFolders = {}", string.format("CustomStickerFolders = { %q }", customDir .. "/"))
+    f = assert(io.open(cfgPath, "w")) f:write(cfg) f:close()
+end
 if os.getenv("DEBUG") then os.execute(string.format("sed -i %q %q", "s/Debug = false/Debug = true/", tmp .. "/Scripts/config.lua")) end
 package.path = tmp .. "/Scripts/?.lua;" .. package.path
 local chunk = assert(loadfile(tmp .. "/Scripts/main.lua"))
@@ -198,7 +207,7 @@ local function check(cond, msg)
     if cond then realPrint("ok    " .. msg) else failures = failures + 1 realPrint("FAIL  " .. msg .. "\n      last log: " .. lastLog()) end
 end
 
-check(lastLog():find("12 camos, 12 stickers", 1, true), "startup lists the shipped camos and stickers")
+check(lastLog():find("12 camos, 13 stickers", 1, true), "startup lists the shipped images plus the custom folder's JPG")
 
 local body = weapon1._body
 press("KEY_F5")
@@ -254,6 +263,18 @@ check(lastLog():find("01_Woodland"), "Shift+F5 goes back")
 
 press("KEY_INS")
 check(table.concat(logLines):find("BP_Weapon_AKM_C") and table.concat(logLines):find("BP_Magazine_AKM_C"), "INS dumps nearby classes")
+
+-- Drop a new camo into the folder while the game runs, then Shift+INS.
+os.execute(string.format("cp %q %q", tmp .. "/Camo/12_Gold.png", tmp .. "/Camo/13_MyCamo.png"))
+local importsBefore = #Imports
+press("KEY_INS+SHIFT")
+check(lastLog():find("13 camos, 13 stickers", 1, true), "Shift+INS picks up a newly added camo")
+check(#Imports > importsBefore, "Shift+INS re-imports textures from disk (edited files refresh)")
+check(body._mats[1]._name:find("^CAS_MID_"), "weapon is repainted after reload")
+for _ = 1, 12 do press("KEY_F5") end
+check(lastLog():find("13_MyCamo", 1, true), "the new camo can be selected")
+press("KEY_F6+SHIFT") press("KEY_F6+SHIFT") -- 02 -> 01 -> wraps to the last one
+check(lastLog():find("99_MyLogo", 1, true), "the custom-folder sticker can be selected")
 
 press("KEY_DEL")
 check(body._mats[1] == miReceiver and body._mats[2] == miStock, "DEL restores the original materials")

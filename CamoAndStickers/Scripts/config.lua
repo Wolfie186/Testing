@@ -2,6 +2,13 @@
 -- Edit this file with any text editor; restart the game (or hot-reload UE4SS mods) to apply.
 
 return {
+    -- Your own pictures. Images in the mod's Camo\ and Stickers\ folders are always used;
+    -- list extra folders here (anywhere on disk). Formats: png, jpg, jpeg, bmp, tga.
+    -- After adding or editing files in-game press SHIFT+INS to reload, no restart needed.
+    -- Example: CustomCamoFolders = { [[C:\Users\Me\Pictures\ITR2 Camo]] },
+    CustomCamoFolders = {},
+    CustomStickerFolders = {},
+
     -- "composite": camo is blended over the weapon's original texture and stickers are
     --              drawn on top (needs the weapon material to expose a base color texture param).
     -- "replace":   the base color texture is simply swapped for the camo texture.
@@ -87,7 +94,7 @@ return {
         CycleStrength   = { Key = "F10" },
         ResetWeapon     = { Key = "DEL" },
         DumpNearby      = { Key = "INS" },
-        ReloadPresets   = { Key = "INS", Modifiers = { "SHIFT" } },
+        Reload          = { Key = "INS", Modifiers = { "SHIFT" } }, -- rescan images + presets
 
         StickerLeft     = { Key = "NUM_FOUR" },
         StickerRight    = { Key = "NUM_SIX" },

@@ -50,14 +50,26 @@ local function fileExists(path)
     return false
 end
 
--- Lists *.png in a mod subfolder through UE4SS's directory table, so users can just drop
--- files in. Falls back to probing the built-in names.
-local function listPngs(dir, builtin)
-    local found = {}
+local IMAGE_EXTENSIONS = { png = true, jpg = true, jpeg = true, bmp = true, tga = true }
+
+local function imageName(file)
+    local name, ext = file:match("^(.+)%.([^.]+)$")
+    if name and IMAGE_EXTENSIONS[ext:lower()] then return name end
+    return nil
+end
+
+local function trimSlashes(path)
+    return (path:gsub("[/\\]+$", ""))
+end
+
+-- File names in a folder via UE4SS's game directory table (no console window, but only
+-- works for folders inside the game install). Returns nil if the folder isn't reachable.
+local function listViaGameDirectories(gameDirs, dir)
+    local files
     pcall(function()
-        local win64 = IterateGameDirectories().Game.Binaries.Win64
-        local base = win64.__absolute_path:lower():gsub("[/\\]+$", "")
-        local target = dir:lower()
+        local win64 = gameDirs.Game.Binaries.Win64
+        local base = trimSlashes(win64.__absolute_path):lower()
+        local target = trimSlashes(dir):lower()
         if target:sub(1, #base) ~= base then return end
         local node = win64
         for part in target:sub(#base + 1):gmatch("[^/\\]+") do
@@ -68,28 +80,67 @@ local function listPngs(dir, builtin)
             if not nextNode then return end
             node = nextNode
         end
-        for _, file in pairs(node.__files) do
-            local name = file.__name
-            if name:lower():match("%.png$") then
-                found[#found + 1] = name:gsub("%.[Pp][Nn][Gg]$", "")
+        files = {}
+        for _, file in pairs(node.__files) do files[#files + 1] = file.__name end
+    end)
+    return files
+end
+
+-- File names in any folder through the shell (dir on Windows, ls elsewhere).
+local function listViaShell(dir)
+    -- chcp 65001 makes dir print UTF-8, which is what the engine expects for file names.
+    local cmd = SEP == "\\" and string.format('chcp 65001 >nul & dir /b /a-d "%s" 2>nul', dir)
+        or string.format('ls -1 "%s" 2>/dev/null', dir)
+    local ok, pipe = pcall(io.popen, cmd)
+    if not ok or not pipe then return nil end
+    local files = {}
+    for line in pipe:lines() do files[#files + 1] = line:gsub("\r$", "") end
+    pipe:close()
+    return files
+end
+
+-- Builds { { Name, Path }, ... } from the mod's own folder plus the user's extra folders.
+-- A file in a later folder replaces a same-named one from an earlier folder, so a custom
+-- "01_Woodland.png" overrides the built-in one.
+local function scanImages(dirs, builtin, gameDirs)
+    local byName, names = {}, {}
+    for _, dir in ipairs(dirs) do
+        dir = trimSlashes(SEP == "\\" and dir:gsub("/", "\\") or dir)
+        local files = (gameDirs and listViaGameDirectories(gameDirs, dir)) or listViaShell(dir)
+        if not files or #files == 0 then
+            -- Last resort: probe the names that ship with the mod.
+            files = {}
+            for _, name in ipairs(builtin) do
+                if fileExists(dir .. SEP .. name .. ".png") then files[#files + 1] = name .. ".png" end
             end
         end
-    end)
-    if #found == 0 then
-        for _, name in ipairs(builtin) do
-            if fileExists(dir .. SEP .. name .. ".png") then found[#found + 1] = name end
+        for _, file in ipairs(files) do
+            local name = imageName(file)
+            if name then
+                if not byName[name] then names[#names + 1] = name end
+                byName[name] = dir .. SEP .. file
+            end
         end
     end
-    table.sort(found)
+    table.sort(names, function(a, b) return a:lower() < b:lower() end)
     local list = {}
-    for _, name in ipairs(found) do
-        list[#list + 1] = { Name = name, Path = dir .. SEP .. name .. ".png" }
-    end
+    for _, name in ipairs(names) do list[#list + 1] = { Name = name, Path = byName[name] } end
     return list
 end
 
-local Camos = listPngs(CAMO_DIR, BUILTIN_CAMOS)
-local Stickers = listPngs(STICKER_DIR, BUILTIN_STICKERS)
+local Camos, Stickers = {}, {}
+
+local function scanAllImages()
+    local okDirs, gameDirs = pcall(IterateGameDirectories)
+    if not okDirs or type(gameDirs) ~= "table" then gameDirs = nil end
+    local camoDirs, stickerDirs = { CAMO_DIR }, { STICKER_DIR }
+    for _, d in ipairs(Config.CustomCamoFolders or {}) do camoDirs[#camoDirs + 1] = d end
+    for _, d in ipairs(Config.CustomStickerFolders or {}) do stickerDirs[#stickerDirs + 1] = d end
+    Camos = scanImages(camoDirs, BUILTIN_CAMOS, gameDirs)
+    Stickers = scanImages(stickerDirs, BUILTIN_STICKERS, gameDirs)
+end
+
+scanAllImages()
 
 local function indexByName(list, name)
     for i, item in ipairs(list) do
@@ -701,7 +752,7 @@ local function withWeapon(fn)
 end
 
 local function changeCamo(step)
-    if #Camos == 0 then return log("No camo PNGs found in %s", CAMO_DIR) end
+    if #Camos == 0 then return log("No camo images found in %s", CAMO_DIR) end
     withWeapon(function(_, cls, p)
         local i = cycle(Camos, indexByName(Camos, p.Camo), step)
         p.Camo = i > 0 and Camos[i].Name or nil
@@ -717,7 +768,7 @@ local function activeSticker(p)
 end
 
 local function addSticker()
-    if #Stickers == 0 then return log("No sticker PNGs found in %s", STICKER_DIR) end
+    if #Stickers == 0 then return log("No sticker images found in %s", STICKER_DIR) end
     withWeapon(function(_, cls, p)
         local slot = Config.StickerSlots[(#p.Stickers % #Config.StickerSlots) + 1]
         p.Stickers[#p.Stickers + 1] = {
@@ -730,7 +781,7 @@ local function addSticker()
 end
 
 local function changeSticker(step)
-    if #Stickers == 0 then return log("No sticker PNGs found in %s", STICKER_DIR) end
+    if #Stickers == 0 then return log("No sticker images found in %s", STICKER_DIR) end
     withWeapon(function(_, cls, p)
         local s = activeSticker(p)
         if not s then return addSticker() end
@@ -839,11 +890,19 @@ local function dumpNearby()
     log("  %d distinct base color textures; preset: %s", #texs, presetSignature(Presets[cls]))
 end
 
-local function reloadPresets()
+-- Re-reads the image folders and presets, and reloads every texture from disk, so new or
+-- edited pictures show up without restarting the game.
+local function reloadAll()
+    scanAllImages()
+    for k in pairs(TextureCache) do TextureCache[k] = nil end
+    for k in pairs(CompositeCache) do CompositeCache[k] = nil end
+    CompositeSupported = true
     loadPresets()
     Applied = {}
     autoApply()
-    log("Presets reloaded (%d weapon types)", (function() local n = 0 for _ in pairs(Presets) do n = n + 1 end return n end)())
+    local n = 0
+    for _ in pairs(Presets) do n = n + 1 end
+    log("Reloaded: %d camos, %d stickers, %d weapon presets", #Camos, #Stickers, n)
 end
 
 ------------------------------------------------------------------------ bindings
@@ -861,7 +920,8 @@ local Actions = {
     CycleStrength = cycleStrength,
     ResetWeapon = resetWeapon,
     DumpNearby = dumpNearby,
-    ReloadPresets = reloadPresets,
+    Reload = reloadAll,
+    ReloadPresets = reloadAll, -- old name, kept for edited configs
     StickerLeft = function() editSticker(function(s) s.U = s.U - Config.StickerMoveStep end) end,
     StickerRight = function() editSticker(function(s) s.U = s.U + Config.StickerMoveStep end) end,
     StickerUp = function() editSticker(function(s) s.V = s.V - Config.StickerMoveStep end) end,
