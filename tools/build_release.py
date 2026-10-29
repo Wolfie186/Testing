@@ -10,7 +10,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MOD = os.path.join(ROOT, "CamoAndStickers")
 PREFIX = "IntoTheRadius2/Binaries/Win64/ue4ss/Mods/CamoAndStickers"
 SKIP = {"presets.lua"}
-SKIP_DIRS = {"Sync", "__pycache__"}
+SKIP_DIRS = {"__pycache__"}
+# Panel/ holds runtime files (commands, state, previews); only its readme ships.
+PANEL_KEEP = {"README.txt"}
 
 
 def main():
@@ -22,6 +24,8 @@ def main():
             dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
             for name in sorted(files):
                 if name in SKIP:
+                    continue
+                if os.path.basename(dirpath) == "Panel" and name not in PANEL_KEEP:
                     continue
                 path = os.path.join(dirpath, name)
                 rel = os.path.relpath(path, MOD).replace(os.sep, "/")

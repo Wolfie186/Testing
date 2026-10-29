@@ -5,7 +5,8 @@
 --   * the weapon's base color texture is composited with camo + stickers into a render
 --     target that replaces it through a dynamic material instance,
 --   * choices are saved per weapon type in presets.lua and re-applied to every gun of
---     that type, including ones that spawn later.
+--     that type, including ones that spawn later,
+--   * everything is driven from the CamoPanel desktop window (no hotkeys by default).
 
 local MOD = "[CamoAndStickers] "
 local Config = require("config")
@@ -251,8 +252,7 @@ local function isLocalController(pc)
     return not ok or isLocal -- if the call isn't available, assume single player
 end
 
--- The local player's controller. On a co-op host every client has a PlayerController
--- there too, so pick the one that is ours.
+-- The local player's controller (skips any controller that isn't locally controlled).
 local function getPC()
     if valid(CachedPC) and valid(CachedPC.Pawn) then return CachedPC end
     CachedPC = nil
@@ -345,20 +345,6 @@ local function nearbyActors(pc, maxDist, weaponsOnly)
     end
     table.sort(result, function(a, b) return a.Dist < b.Dist end)
     return result
-end
-
-local function targetWeapon()
-    local pc = getPC()
-    if not pc then
-        log("No player controller yet.")
-        return nil
-    end
-    local hit = nearbyActors(pc, Config.TargetMaxDistance, true)[1]
-    if not hit then
-        log("No weapon within %d cm. Hold or look at a gun (INS dumps nearby classes).", Config.TargetMaxDistance)
-        return nil
-    end
-    return hit.Actor, hit.Class
 end
 
 local function meshComponents(actor)
@@ -475,28 +461,20 @@ local function loadTexture(path)
     return nil
 end
 
--- Remote[playerName] = { Presets = {...}, Images = { camo = { name = path }, sticker = {...} } }
--- filled by the sync code below; source "" means the local player.
-local Remote = {}
-
-local function imagePath(kind, name, source)
+local function imagePath(kind, name)
     if not name then return nil end
-    if source and source ~= "" then
-        local r = Remote[source]
-        return r and r.Images[kind][name] or nil
-    end
     local list = kind == "camo" and Camos or Stickers
     local i = indexByName(list, name)
     return i and list[i].Path or nil
 end
 
-local function camoTexture(name, source)
-    local path = imagePath("camo", name, source)
+local function camoTexture(name)
+    local path = imagePath("camo", name)
     return path and loadTexture(path) or nil
 end
 
-local function stickerTexture(name, source)
-    local path = imagePath("sticker", name, source)
+local function stickerTexture(name)
+    local path = imagePath("sticker", name)
     return path and loadTexture(path) or nil
 end
 
@@ -522,24 +500,24 @@ local function vec2(x, y) return { X = x, Y = y } end
 local WHITE = { R = 1, G = 1, B = 1, A = 1 }
 
 -- Draws base texture + camo + stickers into a render target. Returns the RT or nil.
-local function buildComposite(key, baseTex, preset, texIndex, source)
+local function buildComposite(key, baseTex, preset, texIndex, size)
     local rt = cacheGet(CompositeCache, key)
     if rt then return rt end
 
     local pc = getPC()
     if not pc then return nil end
-    local size = Config.RenderTargetSize
+    size = size or Config.RenderTargetSize
     rt = createRenderTarget(pc, size)
     if not rt then
         CompositeSupported = false
         return nil
     end
 
-    local camo = camoTexture(preset.Camo, source)
+    local camo = camoTexture(preset.Camo)
     local stickers = {}
     for _, s in ipairs(preset.Stickers or {}) do
         if (s.Tex or 1) == texIndex then
-            local tex = stickerTexture(s.Name, source)
+            local tex = stickerTexture(s.Name)
             if tex then stickers[#stickers + 1] = { Tex = tex, Def = s } end
         end
     end
@@ -651,9 +629,7 @@ local function resetActor(actor)
     end
 end
 
--- source: "" for the local player's preset, otherwise the name of the player it came from.
-local function applyToActor(actor, preset, source)
-    source = source or ""
+local function applyToActor(actor, preset)
     local okName, fullName = pcall(function() return actor:GetFullName() end)
     if not okName then return end
     if presetIsEmpty(preset) then
@@ -662,10 +638,10 @@ local function applyToActor(actor, preset, source)
         return
     end
 
-    local sig = source .. "|" .. presetSignature(preset)
+    local sig = presetSignature(preset)
     local slots = materialSlots(actor)
     local texCount = #baseTextures(slots)
-    local camo = camoTexture(preset.Camo, source)
+    local camo = camoTexture(preset.Camo)
     local touched = 0
 
     for _, slot in ipairs(slots) do
@@ -680,7 +656,7 @@ local function applyToActor(actor, preset, source)
         if paintable and (camo or hasStickers) then
             if Config.Mode == "composite" and CompositeSupported then
                 local baseKey = valid(slot.BaseTex) and slot.BaseTex:GetFullName() or "none"
-                tex = buildComposite(baseKey .. "#" .. sig, slot.BaseTex, preset, slot.TexIndex or 1, source)
+                tex = buildComposite(baseKey .. "#" .. sig, slot.BaseTex, preset, slot.TexIndex or 1)
             end
             if not tex then tex = camo end
         end
@@ -711,150 +687,50 @@ local function stillApplied(actor)
     return false
 end
 
------------------------------------------------------------------------- multiplayer sync
---
--- Co-op sync works through a shared folder, because a Lua mod can't add replicated data
--- to the game's own netcode:
---   * every player's mod writes its presets + the pictures they use to
---     <SyncFolder>\<PlayerName>\ (profile.txt and images\),
---   * the folders are mirrored between players by SyncTool\camo_sync.py (host/join over
---     TCP) or by any cloud folder (Dropbox, OneDrive, Syncthing…),
---   * a weapon is painted with the preset of the player holding it (found through its
---     attachment/owner chain), so everyone with the mod sees everyone's camo.
 
-local SyncCfg = Config.Sync or {}
-local SYNC_DIR = trimSlashes((SyncCfg.Folder and SyncCfg.Folder ~= "") and SyncCfg.Folder or (MOD_DIR .. SEP .. "Sync"))
-if SEP == "\\" then SYNC_DIR = SYNC_DIR:gsub("/", "\\") end
-
-local MyName           -- local player's name as the game reports it
-local LastHolder = {}  -- actor full name -> player name, so a dropped gun keeps its owner's look
-local RemoteRaw = {}   -- player name -> last profile.txt contents
-
-local function syncEnabled()
-    return SyncCfg.Enabled == true
-end
-
--- Player names become folder names: keep them file-system safe and predictable.
-local function folderName(player)
-    local name = player:gsub('[<>:"/\\|%?%*%c]', "_"):gsub("^[%s%.]+", ""):gsub("[%s%.]+$", "")
-    return name ~= "" and name or "_"
-end
-
-local function fstr(v)
-    if type(v) == "string" then return v end
-    local ok, str = pcall(function() return v:ToString() end)
-    return ok and str or nil
-end
-
-local function playerNameOfState(ps)
-    if not valid(ps) then return nil end
-    local ok, name = pcall(function() return fstr(ps:GetPlayerName()) end)
-    if ok and name and name ~= "" then return name end
-    return nil
-end
-
--- Name of the player behind a pawn or controller, or nil.
-local function playerNameOf(obj)
-    local ok, ps = pcall(function() return obj.PlayerState end)
-    if ok then return playerNameOfState(ps) end
-    return nil
-end
-
-local function localPlayerName()
-    local pc = getPC()
-    return pc and playerNameOf(pc) or nil
-end
-
--- Who holds this weapon: walk attachment parents (hand, holster, backpack…) and owners up
--- to a pawn or controller that has a PlayerState.
-local function holderOf(actor)
-    local cur = actor
-    for _ = 1, 8 do
-        local parent
-        pcall(function() parent = cur:GetAttachParentActor() end)
-        if not valid(parent) then pcall(function() parent = cur:GetOwner() end) end
-        if not valid(parent) then return nil end
-        local name = playerNameOf(parent)
-        if name then return name end
-        cur = parent
-    end
-    return nil
-end
-
--- The preset and its source for one weapon actor.
-local function effectivePreset(actor, cls)
-    if not syncEnabled() then return Presets[cls], "" end
-    local okName, fullName = pcall(function() return actor:GetFullName() end)
-    local holder = holderOf(actor)
-    if okName then
-        if holder then
-            LastHolder[fullName] = holder
-        elseif SyncCfg.KeepLastOwner ~= false then
-            holder = LastHolder[fullName]
-        end
-    end
-    if holder == nil then
-        if SyncCfg.UnownedWeapons == "factory" then return nil, "" end
-        return Presets[cls], ""
-    end
-    if holder == MyName then return Presets[cls], "" end
-    local r = Remote[holder]
-    if r then return r.Presets[cls], holder end
-    -- That player has no synced profile (no mod, or sync not set up on their side).
-    if SyncCfg.PlayersWithoutMod == "mine" then return Presets[cls], "" end
-    return nil, ""
-end
-
-local function refreshActor(actor, cls, force)
-    local preset, source = effectivePreset(actor, cls)
-    local fullName = actor:GetFullName()
-    local sig = presetIsEmpty(preset) and "" or (source .. "|" .. presetSignature(preset))
-    if sig == "" then
-        if force or Applied[fullName] ~= nil or stillApplied(actor) then
-            resetActor(actor)
-            Applied[fullName] = nil
-        end
-    elseif force or Applied[fullName] ~= sig or not stillApplied(actor) then
-        applyToActor(actor, preset, source)
-    end
-end
-
-local function refreshClass(cls, force)
+local function applyClass(cls)
+    local preset = Presets[cls]
     for _, actor in ipairs(FindAllOf(cls) or {}) do
         if valid(actor) then
-            local ok, err = pcall(refreshActor, actor, cls, force)
+            local ok, err = pcall(applyToActor, actor, preset)
             if not ok then log("Failed to apply to %s: %s", cls, tostring(err)) end
         end
     end
 end
 
--- Every weapon class someone has a preset for, plus classes that are currently painted.
-local function knownClasses()
-    local set = {}
-    for cls in pairs(Presets) do set[cls] = true end
-    for _, r in pairs(Remote) do
-        for cls in pairs(r.Presets) do set[cls] = true end
-    end
-    return set
-end
-
+-- Classes painted on the previous pass, so guns whose preset was removed get reset once.
 local PaintedClasses = {}
 
 local function autoApply()
-    local classes = knownClasses()
-    -- Classes that lost their last preset still need one pass to reset painted guns.
+    local classes = {}
+    for cls in pairs(Presets) do classes[cls] = true end
     for cls in pairs(PaintedClasses) do classes[cls] = true end
-    PaintedClasses = knownClasses()
-    for cls in pairs(classes) do refreshClass(cls, false) end
+    PaintedClasses = {}
+    for cls in pairs(Presets) do PaintedClasses[cls] = true end
+
+    for cls in pairs(classes) do
+        local preset = Presets[cls]
+        local sig = presetIsEmpty(preset) and "" or presetSignature(preset)
+        for _, actor in ipairs(FindAllOf(cls) or {}) do
+            if valid(actor) then
+                local ok, err = pcall(function()
+                    local fullName = actor:GetFullName()
+                    if sig == "" then
+                        if Applied[fullName] ~= nil or stillApplied(actor) then
+                            resetActor(actor)
+                            Applied[fullName] = nil
+                        end
+                    elseif Applied[fullName] ~= sig or not stillApplied(actor) then
+                        applyToActor(actor, preset)
+                    end
+                end)
+                if not ok then dlog("Auto-apply failed for %s: %s", cls, tostring(err)) end
+            end
+        end
+    end
 end
 
----------------------------------------------------------------- profile files
-
-local IMAGE_FILE_OK = { png = true, jpg = true, jpeg = true, bmp = true, tga = true }
-
-local function baseName(path)
-    return path:match("([^/\\]+)$") or path
-end
+------------------------------------------------------------------------ files
 
 local function readFile(path)
     local f = io.open(path, "rb")
@@ -872,171 +748,53 @@ local function writeFile(path, data)
     return true
 end
 
-local function ensureDir(dir)
-    if writeFile(dir .. SEP .. ".cas_probe", "") then
-        os.remove(dir .. SEP .. ".cas_probe")
-        return true
-    end
-    -- Only runs the first time a folder is needed.
-    os.execute(SEP == "\\" and string.format('mkdir "%s" 2>nul', dir) or string.format('mkdir -p "%s"', dir))
-    return writeFile(dir .. SEP .. ".cas_probe", "") and os.remove(dir .. SEP .. ".cas_probe") ~= nil
+-- Write-then-rename, so a reader never sees a half-written file.
+local function writeFileAtomic(path, data)
+    if not writeFile(path .. ".tmp", data) then return false end
+    os.remove(path)
+    return os.rename(path .. ".tmp", path) ~= nil
 end
 
-local CopiedImages = {} -- destination -> size, to skip re-copying unchanged pictures
-
-local function copyImage(src, dst)
-    local data = readFile(src)
-    if not data then return false end
-    if CopiedImages[dst] == #data then return true end
-    if writeFile(dst, data) then
-        CopiedImages[dst] = #data
+local function ensureDir(dir)
+    local probe = dir .. SEP .. ".cas_probe"
+    if writeFile(probe, "") then
+        os.remove(probe)
+        return true
+    end
+    -- The release ships the folder, so this only runs if someone deleted it.
+    os.execute(SEP == "\\" and string.format('mkdir "%s" 2>nul', dir) or string.format('mkdir -p "%s"', dir))
+    if writeFile(probe, "") then
+        os.remove(probe)
         return true
     end
     return false
 end
 
-local function num(v) return string.format("%.4f", v) end
+------------------------------------------------------------------------ editing
 
--- Writes <SyncFolder>\<me>\profile.txt and copies the pictures it uses.
-local function publishProfile()
-    if not syncEnabled() or not MyName then return end
-    local myDir = SYNC_DIR .. SEP .. folderName(MyName)
-    local imgDir = myDir .. SEP .. "images"
-    if not (ensureDir(SYNC_DIR) and ensureDir(myDir) and ensureDir(imgDir)) then
-        log("Can't create sync folder %s", myDir)
-        return
-    end
-    -- Tells camo_sync.py which folder this machine owns (dot files are never synced).
-    writeFile(SYNC_DIR .. SEP .. ".me", folderName(MyName))
+-- Every change goes through these, whether it comes from the control panel or a hotkey.
+-- They take the weapon class explicitly, so the panel can edit any weapon type, not only
+-- the one in your hands.
 
-    local lines = { "CAS-PROFILE\t1", "player\t" .. MyName }
-    local imageLines, used = {}, {}
-    local function useImage(kind, name)
-        local key = kind .. "\t" .. name
-        if used[key] then return end
-        used[key] = true
-        local src = imagePath(kind, name, "")
-        if not src then return end
-        local file = (kind == "camo" and "c_" or "s_") .. baseName(src)
-        if copyImage(src, imgDir .. SEP .. file) then
-            imageLines[#imageLines + 1] = table.concat({ "image", kind, name, file }, "\t")
-        end
-    end
+local Status = "Ready"
+local StateDirty = true
+local PreviewInfo -- { Class, Tex, Count, File, Counter } of the last exported preview
+local exportPreview -- defined with the panel code below
 
-    local classes = {}
-    for cls in pairs(Presets) do classes[#classes + 1] = cls end
-    table.sort(classes)
-    for _, cls in ipairs(classes) do
-        local p = Presets[cls]
-        if not presetIsEmpty(p) then
-            if p.Camo then useImage("camo", p.Camo) end
-            lines[#lines + 1] = table.concat({ "preset", cls, p.Camo or "",
-                num(p.Scale or Config.DefaultCamoScale), num(p.Strength or Config.DefaultCamoStrength) }, "\t")
-            for _, st in ipairs(p.Stickers or {}) do
-                useImage("sticker", st.Name)
-                lines[#lines + 1] = table.concat({ "sticker", cls, st.Name, num(st.U), num(st.V), num(st.Size),
-                    num(st.Rot or 0), tostring(st.Tex or 1) }, "\t")
-            end
-        end
-    end
-    for _, l in ipairs(imageLines) do lines[#lines + 1] = l end
-
-    -- Write-then-rename so the sync tool never picks up a half-written file.
-    local final, tmp = myDir .. SEP .. "profile.txt", myDir .. SEP .. "profile.txt.tmp"
-    if writeFile(tmp, table.concat(lines, "\n") .. "\n") then
-        os.remove(final)
-        os.rename(tmp, final)
-    end
+local function setStatus(fmt, ...)
+    Status = string.format(fmt, ...)
+    StateDirty = true
+    log("%s", Status)
 end
 
--- Parses another player's profile.txt. Remote files are untrusted: plain data only, file
--- names are reduced to a bare name with an image extension inside that player's folder.
-local function parseProfile(text, dir)
-    if not text:match("^CAS%-PROFILE\t1") then return nil end
-    local profile = { Presets = {}, Images = { camo = {}, sticker = {} } }
-    local count = 0
-    for line in text:gmatch("[^\n]+") do
-        count = count + 1
-        if count > 4000 then break end
-        local f = {}
-        for field in (line:gsub("\r$", "") .. "\t"):gmatch("([^\t]*)\t") do f[#f + 1] = field end
-        local kind = f[1]
-        if kind == "player" then
-            profile.Player = f[2]
-        elseif kind == "preset" and f[2] and f[2] ~= "" then
-            profile.Presets[f[2]] = {
-                Camo = (f[3] ~= nil and f[3] ~= "") and f[3] or nil,
-                Scale = tonumber(f[4]) or Config.DefaultCamoScale,
-                Strength = tonumber(f[5]) or Config.DefaultCamoStrength,
-                Stickers = {},
-            }
-        elseif kind == "sticker" and profile.Presets[f[2] or ""] then
-            local st = profile.Presets[f[2]].Stickers
-            local u, v, size = tonumber(f[4]), tonumber(f[5]), tonumber(f[6])
-            if f[3] and u and v and size and #st < 32 then
-                st[#st + 1] = { Name = f[3], U = u, V = v, Size = size, Rot = tonumber(f[7]) or 0,
-                    Tex = math.tointeger(tonumber(f[8])) or 1 }
-            end
-        elseif kind == "image" and (f[2] == "camo" or f[2] == "sticker") and f[3] and f[4] then
-            local file = f[4]
-            local ext = file:match("%.([%w]+)$")
-            if not file:find("[/\\]") and not file:find("^%.") and ext and IMAGE_FILE_OK[ext:lower()] then
-                profile.Images[f[2]][f[3]] = dir .. SEP .. "images" .. SEP .. file
-            end
-        end
-    end
-    return profile
+local function clamp(v, lo, hi)
+    return math.max(lo, math.min(hi, v))
 end
-
--- Reads the profiles of the other players in the session. Their names come from the
--- game's PlayerStates, so no folder listing is needed.
-local function pollRemoteProfiles()
-    local present = {}
-    for _, ps in ipairs(FindAllOf("PlayerState") or {}) do
-        local name = playerNameOfState(ps)
-        if name and name ~= MyName then present[name] = true end
-    end
-    for name in pairs(present) do
-        local dir = SYNC_DIR .. SEP .. folderName(name)
-        local text = readFile(dir .. SEP .. "profile.txt")
-        if text and text ~= RemoteRaw[name] then
-            local profile = parseProfile(text, dir)
-            if profile then
-                RemoteRaw[name] = text
-                -- Pictures may have been replaced under the same file name.
-                for key in pairs(TextureCache) do
-                    if key:sub(1, #dir) == dir then TextureCache[key] = nil end
-                end
-                Remote[name] = profile
-                log("Synced camo profile of %s", name)
-            end
-        end
-    end
-    for name in pairs(Remote) do
-        if not present[name] then
-            Remote[name] = nil
-            RemoteRaw[name] = nil
-        end
-    end
-end
-
-local function syncTick()
-    if not syncEnabled() then return end
-    local name = localPlayerName()
-    if name and name ~= MyName then
-        MyName = name
-        publishProfile()
-        log("Sync: you are '%s', profile folder %s", MyName, SYNC_DIR .. SEP .. folderName(MyName))
-    end
-    pollRemoteProfiles()
-end
-
------------------------------------------------------------------------- actions
 
 local function presetFor(cls)
     local p = Presets[cls]
     if not p then
-        p = { Scale = Config.DefaultCamoScale, Strength = Config.DefaultCamoStrength, Stickers = {}, Active = 0 }
+        p = { Scale = Config.DefaultCamoScale, Strength = Config.DefaultCamoStrength, Stickers = {} }
         Presets[cls] = p
     end
     p.Stickers = p.Stickers or {}
@@ -1044,12 +802,351 @@ local function presetFor(cls)
 end
 
 local function commit(cls)
-    local p = Presets[cls]
-    if presetIsEmpty(p) then Presets[cls] = nil end
-    refreshClass(cls, true)
+    if presetIsEmpty(Presets[cls]) then Presets[cls] = nil end
+    applyClass(cls)
     savePresets()
-    publishProfile()
+    StateDirty = true
+    if PreviewInfo and PreviewInfo.Class == cls then exportPreview(cls, PreviewInfo.Tex) end
 end
+
+local Edit = {}
+
+function Edit.camo(cls, name)
+    local p = presetFor(cls)
+    p.Camo = (name and name ~= "" and indexByName(Camos, name)) and name or nil
+    commit(cls)
+    setStatus("%s: camo = %s", cls, p.Camo or "none")
+end
+
+function Edit.scale(cls, v)
+    if not v then return end
+    presetFor(cls).Scale = clamp(v, 0.25, 16)
+    commit(cls)
+end
+
+function Edit.strength(cls, v)
+    if not v then return end
+    presetFor(cls).Strength = clamp(v, 0, 1)
+    commit(cls)
+end
+
+function Edit.addSticker(cls, name)
+    if #Stickers == 0 then return setStatus("No sticker images in %s", STICKER_DIR) end
+    if not indexByName(Stickers, name) then name = Stickers[1].Name end
+    local p = presetFor(cls)
+    local slot = Config.StickerSlots[(#p.Stickers % #Config.StickerSlots) + 1]
+    p.Stickers[#p.Stickers + 1] = { Name = name, U = slot.U, V = slot.V, Size = Config.DefaultStickerSize, Rot = 0, Tex = 1 }
+    commit(cls)
+    setStatus("%s: added sticker #%d (%s)", cls, #p.Stickers, name)
+    return #p.Stickers
+end
+
+-- fields: any of Name, U, V, Size, Rot, Tex
+function Edit.setSticker(cls, index, fields)
+    local p = Presets[cls]
+    local s = p and p.Stickers and p.Stickers[index]
+    if not s then return end
+    if fields.Name and indexByName(Stickers, fields.Name) then s.Name = fields.Name end
+    if fields.U then s.U = clamp(fields.U, 0, 1) end
+    if fields.V then s.V = clamp(fields.V, 0, 1) end
+    if fields.Size then s.Size = clamp(fields.Size, 0.02, 1) end
+    if fields.Rot then s.Rot = fields.Rot % 360 end
+    if fields.Tex then s.Tex = math.max(1, math.floor(fields.Tex)) end
+    commit(cls)
+end
+
+function Edit.removeSticker(cls, index)
+    local p = Presets[cls]
+    if not (p and p.Stickers and p.Stickers[index]) then return end
+    table.remove(p.Stickers, index)
+    commit(cls)
+    setStatus("%s: sticker removed, %d left", cls, #p.Stickers)
+end
+
+function Edit.reset(cls)
+    Presets[cls] = nil
+    commit(cls)
+    setStatus("%s: back to factory finish", cls)
+end
+
+-- Re-reads the image folders and presets, and reloads every texture from disk, so new or
+-- edited pictures show up without restarting the game.
+function Edit.reload()
+    scanAllImages()
+    for k in pairs(TextureCache) do TextureCache[k] = nil end
+    for k in pairs(CompositeCache) do CompositeCache[k] = nil end
+    CompositeSupported = true
+    loadPresets()
+    Applied = {}
+    autoApply()
+    local n = 0
+    for _ in pairs(Presets) do n = n + 1 end
+    setStatus("Reloaded: %d camos, %d stickers, %d weapon presets", #Camos, #Stickers, n)
+end
+
+------------------------------------------------------------------------ control panel
+--
+-- CamoPanel (a desktop window) and the mod talk through two files in Panel\:
+--   commands.txt  appended by the panel: "<seq>\t<command>\t<args...>" per line,
+--   state.txt     rewritten by the mod: lists, presets, weapon in hands, status, preview.
+-- No keys involved, so nothing can clash with other mods.
+
+local PANEL_DIR = MOD_DIR .. SEP .. "Panel"
+local COMMANDS_FILE = PANEL_DIR .. SEP .. "commands.txt"
+local STATE_FILE = PANEL_DIR .. SEP .. "state.txt"
+local DIAG_FILE = PANEL_DIR .. SEP .. "diagnostics.txt"
+local VERSION = "2.0.0"
+
+local LastSeq          -- highest command already handled; nil until the first read
+local LastCommandsSize = -1
+local PanelSeenAt = -math.huge
+local HeldClass        -- weapon class in your hands (closest to the camera)
+local SeenClasses = {} -- weapon classes seen around you, listed in the panel
+local LastStateBody, LastStateWrite = nil, -math.huge
+local PreviewCounter = 0
+
+local function panelActive()
+    return os.time() - PanelSeenAt < 10
+end
+
+local function scanWeapons()
+    local pc = getPC()
+    if not pc then return end
+    local near = nearbyActors(pc, Config.PanelWeaponRadius, true)
+    local held = near[1] and near[1].Dist <= Config.TargetMaxDistance and near[1].Class or nil
+    if held ~= HeldClass then
+        HeldClass = held
+        StateDirty = true
+    end
+    for _, e in ipairs(near) do
+        if not SeenClasses[e.Class] then
+            SeenClasses[e.Class] = true
+            StateDirty = true
+        end
+    end
+end
+
+-- Draws the selected weapon texture (with its camo and stickers) at preview size and saves
+-- it as a PNG for the panel, where stickers are placed by dragging on it.
+exportPreview = function(cls, texIndex)
+    local actor
+    for _, a in ipairs(FindAllOf(cls) or {}) do
+        if valid(a) then actor = a break end
+    end
+    if not actor then
+        PreviewInfo = { Class = cls, Tex = texIndex or 1, Count = 0, Error = "no weapon of this type is loaded nearby" }
+        StateDirty = true
+        return
+    end
+    local texs = baseTextures(materialSlots(actor))
+    texIndex = clamp(math.floor(texIndex or 1), 1, math.max(1, #texs))
+    local preset = Presets[cls] or { Stickers = {} }
+    local baseTex = texs[texIndex]
+    PreviewInfo = { Class = cls, Tex = texIndex, Count = #texs }
+    StateDirty = true
+
+    if Config.Mode ~= "composite" or not CompositeSupported then
+        PreviewInfo.Error = "preview needs composite mode"
+        return
+    end
+    local key = "preview#" .. (valid(baseTex) and baseTex:GetFullName() or "none") .. "#" .. texIndex .. "#"
+        .. presetSignature(preset)
+    local rt = buildComposite(key, baseTex, preset, texIndex, Config.PreviewSize)
+    if not rt then
+        PreviewInfo.Error = "couldn't draw the preview"
+        return
+    end
+    -- Alternate between two files so the panel never reads one that is being written.
+    PreviewCounter = PreviewCounter + 1
+    local file = string.format("preview_%d.png", PreviewCounter % 2)
+    os.remove(PANEL_DIR .. SEP .. file)
+    local ok, err = pcall(function() renderingLib():ExportRenderTarget(getPC(), rt, PANEL_DIR, file) end)
+    if ok and fileExists(PANEL_DIR .. SEP .. file) then
+        PreviewInfo.File, PreviewInfo.Counter = file, PreviewCounter
+    else
+        PreviewInfo.Error = "the game couldn't save the preview image"
+        dlog("ExportRenderTarget failed: %s", tostring(err))
+    end
+end
+
+local function num(v) return string.format("%.4f", v) end
+
+local function stateBody()
+    local lines = { "CAS-STATE\t2", "version\t" .. VERSION, "status\t" .. Status, "held\t" .. (HeldClass or "") }
+    lines[#lines + 1] = "mode\t" .. ((Config.Mode == "composite" and CompositeSupported) and "composite" or "replace")
+    for _, c in ipairs(Camos) do lines[#lines + 1] = "camo\t" .. c.Name .. "\t" .. c.Path end
+    for _, s in ipairs(Stickers) do lines[#lines + 1] = "sticker\t" .. s.Name .. "\t" .. s.Path end
+
+    local classes = {}
+    for cls in pairs(SeenClasses) do classes[cls] = true end
+    for cls in pairs(Presets) do classes[cls] = true end
+    if HeldClass then classes[HeldClass] = true end
+    local sorted = {}
+    for cls in pairs(classes) do sorted[#sorted + 1] = cls end
+    table.sort(sorted)
+    for _, cls in ipairs(sorted) do
+        lines[#lines + 1] = "weapon\t" .. cls
+        local p = Presets[cls]
+        if p then
+            lines[#lines + 1] = table.concat({ "preset", cls, p.Camo or "",
+                num(p.Scale or Config.DefaultCamoScale), num(p.Strength or Config.DefaultCamoStrength) }, "\t")
+            for i, s in ipairs(p.Stickers or {}) do
+                lines[#lines + 1] = table.concat({ "st", cls, tostring(i), s.Name, num(s.U), num(s.V), num(s.Size),
+                    num(s.Rot or 0), tostring(s.Tex or 1) }, "\t")
+            end
+        end
+    end
+    if PreviewInfo then
+        lines[#lines + 1] = table.concat({ "preview", PreviewInfo.Class, tostring(PreviewInfo.Tex),
+            tostring(PreviewInfo.Count), PreviewInfo.File and (PANEL_DIR .. SEP .. PreviewInfo.File) or "",
+            tostring(PreviewInfo.Counter or 0), PreviewInfo.Error or "" }, "\t")
+    end
+    lines[#lines + 1] = "ack\t" .. tostring(LastSeq or 0)
+    return table.concat(lines, "\n") .. "\n"
+end
+
+local function writeState(force)
+    local body = stateBody()
+    local now = os.time()
+    -- The time line doubles as a heartbeat: the panel shows "connected" while it moves.
+    local heartbeatDue = now - LastStateWrite >= (panelActive() and 2 or 10)
+    if not force and body == LastStateBody and not heartbeatDue then return end
+    if writeFileAtomic(STATE_FILE, "time\t" .. now .. "\n" .. body) then
+        LastStateBody, LastStateWrite = body, now
+        StateDirty = false
+    end
+end
+
+local function diagnostics()
+    local out = {}
+    local function add(fmt, ...) out[#out + 1] = string.format(fmt, ...) end
+    local pc = getPC()
+    if not pc then
+        add("No player controller yet: load a save first.")
+        return out
+    end
+    add("Actors within 2 m (W = recognised as a weapon):")
+    local near = nearbyActors(pc, 200, false)
+    for i = 1, math.min(20, #near) do
+        local e = near[i]
+        add("  %s %6.1f cm  %s", isWeaponClass(e.Class) and "W" or " ", e.Dist, e.Class)
+    end
+    local hit = nearbyActors(pc, Config.TargetMaxDistance, true)[1]
+    if not hit then
+        add("")
+        add("No weapon within %d cm. If your gun is in the list above without W, add part of", Config.TargetMaxDistance)
+        add("its class name to WeaponClassPatterns in Scripts\\config.lua.")
+        return out
+    end
+    add("")
+    add("Weapon in hands: %s", hit.Actor:GetFullName())
+    local slots = materialSlots(hit.Actor)
+    local texs = baseTextures(slots)
+    for _, slot in ipairs(slots) do
+        local _, order = textureParams(slot.Base)
+        add("  %s [%d] %s", objName(slot.Comp), slot.Index, slot.Base:GetFullName())
+        add("      texture params: %s", #order > 0 and table.concat(order, ", ") or "(none listed, plain material)")
+        add("      base color: %s  (texture #%s)", tostring(slot.Param), tostring(slot.TexIndex))
+    end
+    add("  %d distinct base color textures; mode: %s", #texs,
+        (Config.Mode == "composite" and CompositeSupported) and "composite" or "replace")
+    return out
+end
+
+function Edit.diagnostics()
+    local lines = diagnostics()
+    for _, l in ipairs(lines) do log("%s", l) end
+    writeFileAtomic(DIAG_FILE, table.concat(lines, "\n") .. "\n")
+    setStatus("Diagnostics written (%d lines)", #lines)
+end
+
+local function split(line)
+    local f = {}
+    for field in (line:gsub("\r$", "") .. "\t"):gmatch("([^\t]*)\t") do f[#f + 1] = field end
+    return f
+end
+
+local Commands = {
+    hello = function() StateDirty = true end,
+    ping = function() end,
+    camo = function(f) Edit.camo(f[3], f[4]) end,
+    scale = function(f) Edit.scale(f[3], tonumber(f[4])) end,
+    strength = function(f) Edit.strength(f[3], tonumber(f[4])) end,
+    add_sticker = function(f) Edit.addSticker(f[3], f[4]) end,
+    set_sticker = function(f)
+        Edit.setSticker(f[3], tonumber(f[4]) or 0, {
+            Name = f[5] ~= "" and f[5] or nil, U = tonumber(f[6]), V = tonumber(f[7]),
+            Size = tonumber(f[8]), Rot = tonumber(f[9]), Tex = tonumber(f[10]),
+        })
+    end,
+    remove_sticker = function(f) Edit.removeSticker(f[3], tonumber(f[4]) or 0) end,
+    reset = function(f) Edit.reset(f[3]) end,
+    reload = function() Edit.reload() end,
+    preview = function(f) exportPreview(f[3], tonumber(f[4]) or 1) end,
+    diagnostics = function() Edit.diagnostics() end,
+    scan = function() scanWeapons() end,
+}
+
+local function pollCommands()
+    local f = io.open(COMMANDS_FILE, "rb")
+    if not f then
+        if LastSeq == nil then LastSeq = 0 end
+        return
+    end
+    local size = f:seek("end")
+    if size == LastCommandsSize then
+        f:close()
+        return
+    end
+    f:seek("set")
+    local text = f:read("a")
+    f:close()
+    LastCommandsSize = size
+
+    local entries, maxSeq = {}, 0
+    for line in text:gmatch("([^\n]*)\n") do -- only complete lines
+        local fields = split(line)
+        local seq = math.tointeger(tonumber(fields[1]))
+        if seq then
+            entries[#entries + 1] = { Seq = seq, Fields = fields }
+            maxSeq = math.max(maxSeq, seq)
+        end
+    end
+    if LastSeq == nil then
+        -- Commands left over from an earlier game session are not replayed.
+        LastSeq = maxSeq
+        return
+    end
+    if maxSeq < LastSeq then LastSeq = 0 end -- the panel started a fresh file
+    for _, e in ipairs(entries) do
+        if e.Seq > LastSeq then
+            LastSeq = e.Seq
+            PanelSeenAt = os.time()
+            local handler = Commands[e.Fields[2]]
+            if handler then
+                local ok, err = pcall(handler, e.Fields)
+                if not ok then setStatus("Command '%s' failed: %s", tostring(e.Fields[2]), tostring(err)) end
+            else
+                dlog("Unknown panel command '%s'", tostring(e.Fields[2]))
+            end
+            StateDirty = true
+        end
+    end
+end
+
+local PanelTicks = 0
+
+local function panelTick()
+    pollCommands()
+    PanelTicks = PanelTicks + 1
+    if panelActive() and PanelTicks * Config.PanelPollMs >= 1000 then
+        PanelTicks = 0
+        scanWeapons()
+    end
+    writeState(StateDirty)
+end
+
+------------------------------------------------------------------------ optional hotkeys
 
 local function cycle(list, current, step)
     -- Index 0 means "none".
@@ -1059,96 +1156,6 @@ local function cycle(list, current, step)
     return i
 end
 
-local function withWeapon(fn)
-    local actor, cls = targetWeapon()
-    if actor then fn(actor, cls, presetFor(cls)) end
-end
-
-local function changeCamo(step)
-    if #Camos == 0 then return log("No camo images found in %s", CAMO_DIR) end
-    withWeapon(function(_, cls, p)
-        local i = cycle(Camos, indexByName(Camos, p.Camo), step)
-        p.Camo = i > 0 and Camos[i].Name or nil
-        commit(cls)
-        log("%s: camo = %s", cls, p.Camo or "none")
-    end)
-end
-
-local function activeSticker(p)
-    if #p.Stickers == 0 then return nil end
-    p.Active = math.max(1, math.min(p.Active or 1, #p.Stickers))
-    return p.Stickers[p.Active]
-end
-
-local function addSticker()
-    if #Stickers == 0 then return log("No sticker images found in %s", STICKER_DIR) end
-    withWeapon(function(_, cls, p)
-        local slot = Config.StickerSlots[(#p.Stickers % #Config.StickerSlots) + 1]
-        p.Stickers[#p.Stickers + 1] = {
-            Name = Stickers[1].Name, U = slot.U, V = slot.V, Size = Config.DefaultStickerSize, Rot = 0, Tex = 1,
-        }
-        p.Active = #p.Stickers
-        commit(cls)
-        log("%s: added sticker #%d (%s)", cls, p.Active, Stickers[1].Name)
-    end)
-end
-
-local function changeSticker(step)
-    if #Stickers == 0 then return log("No sticker images found in %s", STICKER_DIR) end
-    withWeapon(function(_, cls, p)
-        local s = activeSticker(p)
-        if not s then return addSticker() end
-        local i = (indexByName(Stickers, s.Name) or 1) + step
-        if i > #Stickers then i = 1 elseif i < 1 then i = #Stickers end
-        s.Name = Stickers[i].Name
-        commit(cls)
-        log("%s: sticker #%d = %s", cls, p.Active, s.Name)
-    end)
-end
-
-local function removeSticker()
-    withWeapon(function(_, cls, p)
-        if not activeSticker(p) then return log("%s has no stickers", cls) end
-        table.remove(p.Stickers, p.Active)
-        p.Active = #p.Stickers
-        commit(cls)
-        log("%s: sticker removed, %d left", cls, #p.Stickers)
-    end)
-end
-
-local function nextActiveLayer()
-    withWeapon(function(actor, cls, p)
-        if #p.Stickers == 0 then return log("%s has no stickers", cls) end
-        p.Active = (p.Active or 0) % #p.Stickers + 1
-        log("%s: editing sticker #%d (%s)", cls, p.Active, p.Stickers[p.Active].Name)
-    end)
-end
-
--- Moves the active sticker to the next distinct texture of the weapon (receiver, stock…).
-local function nextStickerTexture()
-    withWeapon(function(actor, cls, p)
-        local s = activeSticker(p)
-        if not s then return log("%s has no stickers", cls) end
-        local count = math.max(1, #baseTextures(materialSlots(actor)))
-        s.Tex = (s.Tex or 1) % count + 1
-        commit(cls)
-        log("%s: sticker #%d is on texture %d of %d", cls, p.Active, s.Tex, count)
-    end)
-end
-
-local function editSticker(fn)
-    withWeapon(function(_, cls, p)
-        local s = activeSticker(p)
-        if not s then return log("%s has no stickers (F7 adds one)", cls) end
-        fn(s)
-        s.U = math.max(0, math.min(1, s.U))
-        s.V = math.max(0, math.min(1, s.V))
-        s.Size = math.max(0.02, math.min(1, s.Size))
-        s.Rot = (s.Rot or 0) % 360
-        commit(cls)
-    end)
-end
-
 local function stepThrough(steps, current)
     for i, v in ipairs(steps) do
         if math.abs(v - current) < 1e-3 then return steps[i % #steps + 1] end
@@ -1156,105 +1163,37 @@ local function stepThrough(steps, current)
     return steps[1]
 end
 
-local function cycleScale()
-    withWeapon(function(_, cls, p)
-        p.Scale = stepThrough(Config.CamoScaleSteps, p.Scale or Config.DefaultCamoScale)
-        commit(cls)
-        log("%s: camo scale = %.2f", cls, p.Scale)
-    end)
-end
-
-local function cycleStrength()
-    withWeapon(function(_, cls, p)
-        p.Strength = stepThrough(Config.CamoStrengthSteps, p.Strength or Config.DefaultCamoStrength)
-        commit(cls)
-        log("%s: camo strength = %.2f", cls, p.Strength)
-    end)
-end
-
-local function resetWeapon()
-    withWeapon(function(_, cls)
-        Presets[cls] = nil
-        commit(cls)
-        log("%s: back to factory finish", cls)
-    end)
-end
-
-local function dumpNearby()
+local function withHeld(fn)
     local pc = getPC()
-    if not pc then return log("No player controller yet.") end
-    log("---- Actors within 200 cm (W = matches weapon patterns) ----")
-    local near = nearbyActors(pc, 200, false)
-    for i = 1, math.min(15, #near) do
-        local e = near[i]
-        log("%s %6.1f cm  %s", isWeaponClass(e.Class) and "W" or " ", e.Dist, e.Class)
-    end
-    local actor, cls = targetWeapon()
-    if not actor then return end
-    log("---- Target weapon: %s ----", actor:GetFullName())
-    local slots = materialSlots(actor)
-    local texs = baseTextures(slots)
-    for _, slot in ipairs(slots) do
-        local _, order = textureParams(slot.Base)
-        log("  %s [%d] %s", objName(slot.Comp), slot.Index, slot.Base:GetFullName())
-        log("      texture params: %s", #order > 0 and table.concat(order, ", ") or "(none listed, plain material)")
-        log("      base color: %s  (sticker texture #%s)", tostring(slot.Param), tostring(slot.TexIndex))
-    end
-    log("  %d distinct base color textures; your preset: %s", #texs, presetSignature(Presets[cls]))
-    if syncEnabled() then
-        local preset, source = effectivePreset(actor, cls)
-        log("  sync: you = %s, holder = %s, showing %s preset: %s", tostring(MyName), tostring(holderOf(actor)),
-            source == "" and "your" or (source .. "'s"), presetSignature(preset))
-        local names = {}
-        for name in pairs(Remote) do names[#names + 1] = name end
-        log("  synced players: %s (folder %s)", #names > 0 and table.concat(names, ", ") or "none", SYNC_DIR)
-    end
+    local hit = pc and nearbyActors(pc, Config.TargetMaxDistance, true)[1]
+    if not hit then return setStatus("No weapon within %d cm", Config.TargetMaxDistance) end
+    fn(hit.Class, presetFor(hit.Class))
 end
-
--- Re-reads the image folders and presets, and reloads every texture from disk, so new or
--- edited pictures show up without restarting the game.
-local function reloadAll()
-    scanAllImages()
-    for k in pairs(TextureCache) do TextureCache[k] = nil end
-    for k in pairs(CompositeCache) do CompositeCache[k] = nil end
-    CompositeSupported = true
-    loadPresets()
-    Applied = {}
-    RemoteRaw = {}
-    CopiedImages = {}
-    syncTick()
-    publishProfile()
-    autoApply()
-    local n = 0
-    for _ in pairs(Presets) do n = n + 1 end
-    log("Reloaded: %d camos, %d stickers, %d weapon presets", #Camos, #Stickers, n)
-end
-
------------------------------------------------------------------------- bindings
 
 local Actions = {
-    NextCamo = function() changeCamo(1) end,
-    PrevCamo = function() changeCamo(-1) end,
-    NextSticker = function() changeSticker(1) end,
-    PrevSticker = function() changeSticker(-1) end,
-    AddSticker = addSticker,
-    RemoveSticker = removeSticker,
-    NextActiveLayer = nextActiveLayer,
-    NextStickerTexture = nextStickerTexture,
-    CycleCamoScale = cycleScale,
-    CycleStrength = cycleStrength,
-    ResetWeapon = resetWeapon,
-    DumpNearby = dumpNearby,
-    Reload = reloadAll,
-    ReloadPresets = reloadAll, -- old name, kept for edited configs
-    StickerLeft = function() editSticker(function(s) s.U = s.U - Config.StickerMoveStep end) end,
-    StickerRight = function() editSticker(function(s) s.U = s.U + Config.StickerMoveStep end) end,
-    StickerUp = function() editSticker(function(s) s.V = s.V - Config.StickerMoveStep end) end,
-    StickerDown = function() editSticker(function(s) s.V = s.V + Config.StickerMoveStep end) end,
-    StickerBigger = function() editSticker(function(s) s.Size = s.Size + Config.StickerSizeStep end) end,
-    StickerSmaller = function() editSticker(function(s) s.Size = s.Size - Config.StickerSizeStep end) end,
-    StickerRotLeft = function() editSticker(function(s) s.Rot = (s.Rot or 0) - Config.StickerRotateStep end) end,
-    StickerRotRight = function() editSticker(function(s) s.Rot = (s.Rot or 0) + Config.StickerRotateStep end) end,
+    NextCamo = function() withHeld(function(cls, p)
+        local i = cycle(Camos, indexByName(Camos, p.Camo), 1)
+        Edit.camo(cls, i > 0 and Camos[i].Name or "")
+    end) end,
+    PrevCamo = function() withHeld(function(cls, p)
+        local i = cycle(Camos, indexByName(Camos, p.Camo), -1)
+        Edit.camo(cls, i > 0 and Camos[i].Name or "")
+    end) end,
+    NextSticker = function() withHeld(function(cls, p)
+        local s = p.Stickers[#p.Stickers]
+        if not s then return Edit.addSticker(cls) end
+        local i = (indexByName(Stickers, s.Name) or 0) % #Stickers + 1
+        Edit.setSticker(cls, #p.Stickers, { Name = Stickers[i].Name })
+    end) end,
+    AddSticker = function() withHeld(function(cls) Edit.addSticker(cls) end) end,
+    RemoveSticker = function() withHeld(function(cls, p) Edit.removeSticker(cls, #p.Stickers) end) end,
+    ResetWeapon = function() withHeld(function(cls) Edit.reset(cls) end) end,
+    CycleCamoScale = function() withHeld(function(cls, p)
+        Edit.scale(cls, stepThrough(Config.CamoScaleSteps, p.Scale or Config.DefaultCamoScale))
+    end) end,
+    CycleStrength = function() withHeld(function(cls, p)
+        Edit.strength(cls, stepThrough(Config.CamoStrengthSteps, p.Strength or Config.DefaultCamoStrength))
+    end) end,
 }
 
 local function runSafe(name, fn)
@@ -1264,36 +1203,45 @@ local function runSafe(name, fn)
     end)
 end
 
-for action, bind in pairs(Config.Keys) do
-    local fn = Actions[action]
-    local key = bind.Key and Key[bind.Key]
-    if not fn then
-        log("Unknown action '%s' in config.Keys", action)
-    elseif not key then
-        log("Unknown key '%s' for %s", tostring(bind.Key), action)
-    else
-        local mods = {}
-        for _, m in ipairs(bind.Modifiers or {}) do
-            if ModifierKey[m] then mods[#mods + 1] = ModifierKey[m] else log("Unknown modifier '%s' for %s", m, action) end
+if Config.EnableHotkeys then
+    for action, bind in pairs(Config.Keys or {}) do
+        local fn = Actions[action]
+        local key = bind.Key and Key[bind.Key]
+        if not fn then
+            log("Unknown action '%s' in config.Keys", action)
+        elseif not key then
+            log("Unknown key '%s' for %s", tostring(bind.Key), action)
+        else
+            local mods = {}
+            for _, m in ipairs(bind.Modifiers or {}) do
+                if ModifierKey[m] then mods[#mods + 1] = ModifierKey[m] else log("Unknown modifier '%s' for %s", m, action) end
+            end
+            local callback = function() runSafe(action, fn) end
+            if #mods > 0 then RegisterKeyBind(key, mods, callback) else RegisterKeyBind(key, callback) end
         end
-        local callback = function() runSafe(action, fn) end
-        if #mods > 0 then RegisterKeyBind(key, mods, callback) else RegisterKeyBind(key, callback) end
     end
 end
 
 ------------------------------------------------------------------------ startup
 
 loadPresets()
+if not ensureDir(PANEL_DIR) then log("Can't use the panel folder %s", PANEL_DIR) end
 
 LoopAsync(Config.AutoApplyIntervalMs, function()
     ExecuteInGameThread(function()
-        local okSync, errSync = pcall(syncTick)
-        if not okSync then dlog("sync: %s", tostring(errSync)) end
         local ok, err = pcall(autoApply)
         if not ok then dlog("autoApply: %s", tostring(err)) end
     end)
     return false
 end)
 
-log("Loaded: %d camos, %d stickers, %d saved weapon presets. Mod folder: %s",
+LoopAsync(Config.PanelPollMs, function()
+    ExecuteInGameThread(function()
+        local ok, err = pcall(panelTick)
+        if not ok then dlog("panel: %s", tostring(err)) end
+    end)
+    return false
+end)
+
+log("Loaded v%s: %d camos, %d stickers, %d saved weapon presets. Mod folder: %s", VERSION,
     #Camos, #Stickers, (function() local n = 0 for _ in pairs(Presets) do n = n + 1 end return n end)(), MOD_DIR)

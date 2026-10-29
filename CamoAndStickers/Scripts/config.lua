@@ -4,26 +4,10 @@
 return {
     -- Your own pictures. Images in the mod's Camo\ and Stickers\ folders are always used;
     -- list extra folders here (anywhere on disk). Formats: png, jpg, jpeg, bmp, tga.
-    -- After adding or editing files in-game press SHIFT+INS to reload, no restart needed.
+    -- After adding or editing files press "Обновить картинки" in the control panel.
     -- Example: CustomCamoFolders = { [[C:\Users\Me\Pictures\ITR2 Camo]] },
     CustomCamoFolders = {},
     CustomStickerFolders = {},
-
-    -- Co-op sync: everyone with the mod sees the camo each player picked for the gun in
-    -- their hands. See README ("Мультиплеер") for setup: SyncTool\host.bat on the host,
-    -- SyncTool\join.bat on the others, or point Folder at a shared cloud folder.
-    Sync = {
-        Enabled = false,
-        -- Shared folder with one subfolder per player. Empty = <mod folder>\Sync,
-        -- which is where SyncTool\camo_sync.py mirrors to by default.
-        Folder = "",
-        -- Guns nobody holds (on the ground, in shops): "mine" = your preset, "factory".
-        UnownedWeapons = "mine",
-        -- Guns held by a player whose profile isn't synced (no mod): "factory" or "mine".
-        PlayersWithoutMod = "factory",
-        -- A dropped gun keeps the look of the last player who held it.
-        KeepLastOwner = true,
-    },
 
     -- "composite": camo is blended over the weapon's original texture and stickers are
     --              drawn on top (needs the weapon material to expose a base color texture param).
@@ -35,22 +19,22 @@ return {
     RenderTargetSize = 2048,
 
     -- How strongly the camo covers the original paint (composite mode). 1.0 = fully covered.
-    -- The F10 key cycles through CamoStrengthSteps in-game.
+    -- CamoStrengthSteps / CamoScaleSteps are only used by the optional hotkeys.
     DefaultCamoStrength = 0.85,
     CamoStrengthSteps = { 0.55, 0.7, 0.85, 1.0 },
 
-    -- Camo tiling: bigger value = smaller pattern. F9 cycles through CamoScaleSteps.
+    -- Camo tiling: bigger value = smaller pattern.
     DefaultCamoScale = 2.0,
     CamoScaleSteps = { 1.0, 2.0, 3.0, 4.0, 6.0 },
 
-    -- Default sticker size as a fraction of the texture width, and nudge steps for the numpad.
+    -- Default sticker size as a fraction of the texture width, and nudge steps for the hotkeys.
     DefaultStickerSize = 0.12,
     StickerMoveStep = 0.01,
     StickerSizeStep = 0.01,
     StickerRotateStep = 15,
 
     -- Where new stickers are placed (UV space, 0..1). Every weapon has its own UV layout,
-    -- so use the numpad to move the active sticker to where it looks right; it is saved.
+    -- so drag the sticker on the preview in the control panel to where it looks right.
     StickerSlots = {
         { U = 0.30, V = 0.30 },
         { U = 0.60, V = 0.30 },
@@ -65,7 +49,7 @@ return {
 
     -- Actor class names (short names, e.g. "BP_Weapon_AKM_C") count as weapons when they
     -- contain one of these substrings (case-insensitive) and none of the excluded ones.
-    -- Use the INS key next to an unpainted gun to dump nearby classes to the UE4SS log.
+    -- The panel's "Диагностика" button lists nearby classes so you can add yours here.
     WeaponClassPatterns = {
         "weapon", "firearm", "gun", "rifle", "pistol", "shotgun", "revolver", "smg",
         "carbine", "sniper", "akm", "ak74", "aks", "sks", "svd", "mosin", "makarov", "pm_",
@@ -95,31 +79,26 @@ return {
     -- Re-apply saved camo to weapons that spawn (loaded saves, traders, stash) every N ms.
     AutoApplyIntervalMs = 3000,
 
-    -- Hotkeys. Names are UE4SS Key names; Modifiers can be "SHIFT", "CONTROL", "ALT".
-    -- A key with modifiers is a separate binding: F5 and SHIFT+F5 do different things.
-    Keys = {
-        NextCamo        = { Key = "F5" },
-        PrevCamo        = { Key = "F5", Modifiers = { "SHIFT" } },
-        NextSticker     = { Key = "F6" },
-        PrevSticker     = { Key = "F6", Modifiers = { "SHIFT" } },
-        AddSticker      = { Key = "F7" },
-        RemoveSticker   = { Key = "F7", Modifiers = { "SHIFT" } },
-        NextActiveLayer = { Key = "F8" },
-        NextStickerTexture = { Key = "F8", Modifiers = { "SHIFT" } },
-        CycleCamoScale  = { Key = "F9" },
-        CycleStrength   = { Key = "F10" },
-        ResetWeapon     = { Key = "DEL" },
-        DumpNearby      = { Key = "INS" },
-        Reload          = { Key = "INS", Modifiers = { "SHIFT" } }, -- rescan images + presets
+    -- Control panel (CamoPanel.bat in the mod folder). It talks to the mod through files in
+    -- the mod's Panel\ folder; these are how often the mod checks for panel commands and
+    -- how far it looks for weapons to list in the panel.
+    PanelPollMs = 250,
+    PanelWeaponRadius = 500,
+    PreviewSize = 512,
 
-        StickerLeft     = { Key = "NUM_FOUR" },
-        StickerRight    = { Key = "NUM_SIX" },
-        StickerUp       = { Key = "NUM_EIGHT" },
-        StickerDown     = { Key = "NUM_TWO" },
-        StickerBigger   = { Key = "ADD" },
-        StickerSmaller  = { Key = "SUBTRACT" },
-        StickerRotLeft  = { Key = "NUM_SEVEN" },
-        StickerRotRight = { Key = "NUM_NINE" },
+    -- Hotkeys are OFF by default so they can't clash with other mods: everything is in the
+    -- control panel. Set EnableHotkeys = true to use them; names are UE4SS Key names,
+    -- Modifiers can be "SHIFT", "CONTROL", "ALT" (F5 and SHIFT+F5 are separate bindings).
+    EnableHotkeys = false,
+    Keys = {
+        NextCamo        = { Key = "F5", Modifiers = { "CONTROL", "ALT" } },
+        PrevCamo        = { Key = "F5", Modifiers = { "CONTROL", "ALT", "SHIFT" } },
+        NextSticker     = { Key = "F6", Modifiers = { "CONTROL", "ALT" } },
+        AddSticker      = { Key = "F7", Modifiers = { "CONTROL", "ALT" } },
+        RemoveSticker   = { Key = "F7", Modifiers = { "CONTROL", "ALT", "SHIFT" } },
+        ResetWeapon     = { Key = "F8", Modifiers = { "CONTROL", "ALT" } },
+        CycleCamoScale  = { Key = "F9", Modifiers = { "CONTROL", "ALT" } },
+        CycleStrength   = { Key = "F10", Modifiers = { "CONTROL", "ALT" } },
     },
 
     -- Print extra diagnostics to the UE4SS console/log.

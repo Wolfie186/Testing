@@ -1,4 +1,5 @@
 CamoAndStickers/presets.lua
 dist/
 __pycache__/
-CamoAndStickers/Sync/
+CamoAndStickers/Panel/*
+!CamoAndStickers/Panel/README.txt

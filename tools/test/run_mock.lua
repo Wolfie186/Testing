@@ -102,30 +102,23 @@ local magazine = newObject("BP_Magazine_AKM_C", nil, {}, {
 })
 local Actors = { weapon1, weapon2, magazine }
 
-local function newPlayerState(name)
-    return newObject("PlayerState", "PS_" .. name, {}, {
-        GetPlayerName = function() return { ToString = function() return name end } end,
-    })
-end
-local psMe, psBob = newPlayerState("Me"), newPlayerState("Bob")
-PlayerStates = { psMe, psBob }
-
-local pawn = newObject("BP_Player_C", "Player", { PlayerState = psMe })
-local bobPawn = newObject("BP_Player_C", "BobPawn", { PlayerState = psBob })
--- On a co-op host the remote player's controller exists here too and must be skipped.
-remotePC = newObject("PlayerController", "BobPC", { Pawn = bobPawn, PlayerState = psBob }, {
+local pawn = newObject("BP_Player_C", "Player")
+-- A controller that isn't the local player's must be skipped.
+local otherPC = newObject("PlayerController", "OtherPC", { Pawn = newObject("BP_Player_C", "Other") }, {
     IsLocalController = function() return false end,
 })
 local pc = newObject("PlayerController", "PC", {
     Pawn = pawn,
-    PlayerState = psMe,
     PlayerCameraManager = { GetCameraLocation = function() return { X = 0, Y = 0, Z = 0 } end },
 })
 
+local CurrentRT
 local canvas = newObject("Canvas", "Canvas", {}, {
     K2_DrawTexture = function(_, tex, pos, size, uvPos, uvSize, color, blend, rot, pivot)
         assert(pos.X and size.X and uvSize.X and color.A and pivot.X, "bad K2_DrawTexture args")
-        Draws[#Draws + 1] = { Tex = tex._name, Blend = blend, Alpha = color.A, Rot = rot, Pos = pos, Size = size, UV = uvSize }
+        local d = { Tex = tex._name, Path = tex._path, Blend = blend, Alpha = color.A, Rot = rot, Pos = pos, Size = size, UV = uvSize }
+        Draws[#Draws + 1] = d
+        if CurrentRT then CurrentRT._draws[#CurrentRT._draws + 1] = d end
     end,
 })
 
@@ -135,10 +128,12 @@ local KRL = newObject("KismetRenderingLibrary", "Default__KismetRenderingLibrary
         local f = assert(io.open(path, "rb"), "missing texture file " .. path)
         f:close()
         Imports[#Imports + 1] = path
-        return newObject("Texture2D", path:match("([^/\\]+)%.png$"), {}, {
+        local tex = newObject("Texture2D", path:match("([^/\\]+)%.png$"), {}, {
             Blueprint_GetSizeX = function() return 256 end,
             Blueprint_GetSizeY = function() return 256 end,
         })
+        tex._path = path
+        return tex
     end,
     CreateRenderTarget2D = function(_, ctx, w, h, fmt, clear, mips, uav)
         assert(uav ~= nil, "expects the UE5 signature in this mock")
@@ -149,10 +144,30 @@ local KRL = newObject("KismetRenderingLibrary", "Default__KismetRenderingLibrary
         assert(type(canvasOut) == "table" and type(ctxOut) == "table")
         canvasOut.Canvas = canvas -- UE4SS writes object out params to a key named after the param
         ctxOut.Begun = true
+        CurrentRT = rt
+        rt._draws = {}
     end,
     EndDrawCanvasToRenderTarget = function(_, ctx, ctxOut)
         assert(ctxOut.Begun, "End without Begin context")
         ctxOut.Begun = false
+        CurrentRT = nil
+    end,
+    ExportRenderTarget = function(_, ctx, rt, dir, file)
+        assert(rt._class == "TextureRenderTarget2D" and rt.SizeX == 512, "preview should export a 512 px RT")
+        Exports = (Exports or 0) + 1
+        if not os.getenv("FAKE_GAME") then
+            local f = assert(io.open(dir .. "/" .. file, "wb")) f:write("PNG") f:close()
+            return
+        end
+        -- Fake game: turn the recorded draw calls into a real picture for the panel.
+        local ops = dir .. "/ops.txt"
+        local f = assert(io.open(ops, "w"))
+        f:write("size\t" .. rt.SizeX .. "\n")
+        for _, d in ipairs(rt._draws or {}) do
+            f:write(table.concat({ "draw", d.Path, d.Pos.X, d.Pos.Y, d.Size.X, d.Size.Y, d.UV.X, d.UV.Y, d.Alpha, d.Blend, d.Rot }, "\t") .. "\n")
+        end
+        f:close()
+        os.execute(string.format("python3.12 -I %q %q %q", ROOT .. "/tools/test/render_draws.py", ops, dir .. "/" .. file))
     end,
 })
 
@@ -181,8 +196,7 @@ function StaticFindObject(path)
 end
 
 function FindAllOf(name)
-    if name == "PlayerController" then return { remotePC, pc } end
-    if name == "PlayerState" then return PlayerStates end
+    if name == "PlayerController" then return { otherPC, pc } end
     if name == "Actor" then return Actors end
     local out = {}
     for _, a in ipairs(Actors) do
@@ -197,8 +211,8 @@ print = function(s) logLines[#logLines + 1] = s if os.getenv("VERBOSE") then io.
 
 ------------------------------------------------------------------ load the mod from a temp copy
 
-local tmp = os.tmpname()
-os.remove(tmp)
+local tmp = os.getenv("FAKE_GAME") or os.tmpname()
+if not os.getenv("FAKE_GAME") then os.remove(tmp) end
 os.execute(string.format("mkdir -p %q && cp -r %q/. %q", tmp, MOD_DIR, tmp))
 os.remove(tmp .. "/presets.lua")
 -- A user sticker folder outside the mod, holding a JPG.
@@ -210,168 +224,208 @@ do
     cfg = cfg:gsub("CustomStickerFolders = {}", string.format("CustomStickerFolders = { %q }", customDir .. "/"))
     f = assert(io.open(cfgPath, "w")) f:write(cfg) f:close()
 end
+-- Commands left in the panel file by an earlier session must not be replayed.
+os.execute(string.format("mkdir -p %q", tmp .. "/Panel"))
+do
+    local f = assert(io.open(tmp .. "/Panel/commands.txt", "w"))
+    f:write("1\tcamo\tBP_Weapon_AKM_C\t01_Woodland\n2\treset\tBP_Weapon_AKM_C\n")
+    f:close()
+end
+if os.getenv("HOTKEYS") then os.execute(string.format("sed -i %q %q", "s/EnableHotkeys = false/EnableHotkeys = true/", tmp .. "/Scripts/config.lua")) end
 if os.getenv("DEBUG") then os.execute(string.format("sed -i %q %q", "s/Debug = false/Debug = true/", tmp .. "/Scripts/config.lua")) end
 package.path = tmp .. "/Scripts/?.lua;" .. package.path
 local chunk = assert(loadfile(tmp .. "/Scripts/main.lua"))
 chunk()
 
-local function press(k) assert(Binds[k], "no bind " .. k)() end
 local function lastLog() return logLines[#logLines] or "" end
 local failures = 0
 local function check(cond, msg)
     if cond then realPrint("ok    " .. msg) else failures = failures + 1 realPrint("FAIL  " .. msg .. "\n      last log: " .. lastLog()) end
 end
 
-check(lastLog():find("12 camos, 13 stickers", 1, true), "startup lists the shipped images plus the custom folder's JPG")
-
-local body = weapon1._body
-press("KEY_F5")
-check(body._mats[1]._name:find("^CAS_MID_"), "F5 puts a MID on the receiver slot")
-check(body._mats[2]._name:find("^CAS_MID_"), "F5 puts a MID on the stock slot")
-check(body._mats[1].Parent == miReceiver, "MID parent is the original material")
-check(body._mats[1]._params.BaseColor and body._mats[1]._params.BaseColor._class == "TextureRenderTarget2D",
-    "receiver BaseColor param gets the composite render target")
-check(body._mats[2]._params.Albedo ~= nil, "stock uses its own 'Albedo' param")
-check(weapon2._body._mats[1]._name:find("^CAS_MID_"), "same weapon type far away is painted too")
-check(Draws[1] and Draws[1].Blend == 0 and Draws[1].Tex == "T_AKM_Receiver_BC", "composite starts with the original texture, opaque")
-check(Draws[2] and Draws[2].Blend == 2 and Draws[2].Tex == "01_Woodland", "then the camo, translucent")
-
-local rtsAfterFirst = RTs
-press("KEY_F5")
-check(body._mats[1]._params.BaseColor ~= nil and lastLog():find("02_Desert"), "F5 again cycles to the next camo")
-check(RTs == rtsAfterFirst + 2, "one new render target per distinct base texture, shared across same-type guns")
-
-Draws = {}
-press("KEY_F7")
-check(lastLog():find("added sticker #1"), "F7 adds a sticker")
-local stickerDraws = 0
-for _, d in ipairs(Draws) do if d.Tex == "01_Radiation" then stickerDraws = stickerDraws + 1 end end
-check(stickerDraws == 1, "sticker drawn once into the composite both guns share (got " .. stickerDraws .. ")")
-
-press("KEY_F6")
-check(lastLog():find("02_Biohazard"), "F6 changes the active sticker image")
-press("KEY_NUM_SIX") press("KEY_ADD") press("KEY_NUM_NINE")
-press("KEY_F8+SHIFT")
-check(lastLog():find("texture 2 of 2"), "Shift+F8 moves the sticker to the stock texture")
-
-local f = io.open(tmp .. "/presets.lua")
-local saved = f and f:read("a") or ""
-if f then f:close() end
-check(saved:find('BP_Weapon_AKM_C') and saved:find('02_Biohazard') and saved:find('Tex = 2'), "preset is saved to presets.lua")
-local env = {}
-check(load(saved, "presets", "t", env)().BP_Weapon_AKM_C.Stickers[1].U > 0.3, "saved preset reloads with the nudged position")
-
--- A freshly spawned gun of the same type gets the preset from the auto-apply loop.
-local weapon3 = newWeapon("BP_Weapon_AKM_C", 500)
-Actors[#Actors + 1] = weapon3
-Loops[1]()
-check(weapon3._body._mats[1]._name:find("^CAS_MID_"), "auto-apply paints a newly spawned gun")
-
--- The game swapping the material back is noticed and fixed.
-weapon3._body._mats[1] = miReceiver
-weapon3._body._mats[2] = miStock
-Loops[1]()
-check(weapon3._body._mats[1]._name:find("^CAS_MID_"), "auto-apply re-paints after the game resets materials")
-
-press("KEY_F5+SHIFT")
-check(lastLog():find("01_Woodland"), "Shift+F5 goes back")
-
-press("KEY_INS")
-check(table.concat(logLines):find("BP_Weapon_AKM_C") and table.concat(logLines):find("BP_Magazine_AKM_C"), "INS dumps nearby classes")
-
--- Drop a new camo into the folder while the game runs, then Shift+INS.
-os.execute(string.format("cp %q %q", tmp .. "/Camo/12_Gold.png", tmp .. "/Camo/13_MyCamo.png"))
-local importsBefore = #Imports
-press("KEY_INS+SHIFT")
-check(lastLog():find("13 camos, 13 stickers", 1, true), "Shift+INS picks up a newly added camo")
-check(#Imports > importsBefore, "Shift+INS re-imports textures from disk (edited files refresh)")
-check(body._mats[1]._name:find("^CAS_MID_"), "weapon is repainted after reload")
-for _ = 1, 12 do press("KEY_F5") end
-check(lastLog():find("13_MyCamo", 1, true), "the new camo can be selected")
-press("KEY_F6+SHIFT") press("KEY_F6+SHIFT") -- 02 -> 01 -> wraps to the last one
-check(lastLog():find("99_MyLogo", 1, true), "the custom-folder sticker can be selected")
-
-press("KEY_DEL")
-check(body._mats[1] == miReceiver and body._mats[2] == miStock, "DEL restores the original materials")
-f = io.open(tmp .. "/presets.lua")
-saved = f:read("a") f:close()
-check(not saved:find("BP_Weapon_AKM_C"), "DEL removes the saved preset")
-
--- Glass instance (params listed, none is a base color) is never touched.
-local scope = weapon1:K2_GetComponentsByClass()
-local glassUntouched = true
-scope:ForEach(function(_, e) local c = e:get() if c._mats[1] ~= miGlass and c._name ~= "WeaponMesh" then glassUntouched = false end end)
-check(glassUntouched, "glass/lens materials are left alone")
-
------------------------------------------------------------------- co-op sync
-
-local function setHolder(actor, holderPawn)
-    rawset(actor, "GetAttachParentActor", function() return holderPawn end)
-end
 local function readAll(path)
     local f = io.open(path, "rb")
     if not f then return nil end
     local d = f:read("a") f:close() return d
 end
-local function writeAll(path, data)
-    local f = assert(io.open(path, "wb")) f:write(data) f:close()
+
+-- The panel's side of the protocol.
+local CMD = tmp .. "/Panel/commands.txt"
+local seq = 2
+local applyLoop, panelLoop = Loops[1], Loops[2]
+local function send(...)
+    seq = seq + 1
+    local f = assert(io.open(CMD, "ab"))
+    f:write(seq .. "\t" .. table.concat({ ... }, "\t") .. "\n")
+    f:close()
+    panelLoop()
 end
-local function camoDrawnFor(texName)
-    for _, d in ipairs(Draws) do if d.Tex == texName and d.Blend == 2 then return true end end
-    return false
+local function state()
+    local st = { camos = {}, stickers = {}, weapons = {}, presets = {}, st = {} }
+    for line in (readAll(tmp .. "/Panel/state.txt") or ""):gmatch("[^\n]+") do
+        local f = {}
+        for x in (line .. "\t"):gmatch("([^\t]*)\t") do f[#f + 1] = x end
+        local k = f[1]
+        if k == "camo" then st.camos[#st.camos + 1] = f[2]
+        elseif k == "sticker" then st.stickers[#st.stickers + 1] = f[2]
+        elseif k == "weapon" then st.weapons[#st.weapons + 1] = f[2]
+        elseif k == "preset" then st.presets[f[2]] = { Camo = f[3], Scale = tonumber(f[4]), Strength = tonumber(f[5]) }
+        elseif k == "st" then st.st[#st.st + 1] = { Cls = f[2], I = tonumber(f[3]), Name = f[4], U = tonumber(f[5]), V = tonumber(f[6]), Tex = tonumber(f[9]) }
+        elseif k == "preview" then st.preview = { Cls = f[2], Tex = tonumber(f[3]), Count = tonumber(f[4]), Path = f[5], Counter = tonumber(f[6]), Error = f[7] }
+        else st[k] = f[2] end
+    end
+    return st
+end
+local function drawsOf(name)
+    local list = {}
+    for _, d in ipairs(Draws) do if d.Tex == name then list[#list + 1] = d end end
+    return list
+end
+local AKM = "BP_Weapon_AKM_C"
+local body = weapon1._body
+
+if os.getenv("FAKE_GAME") then
+    -- Fake game for trying the control panel: CamoPanel.pyw in the same folder talks to
+    -- this process like it would to the real game. Runs for FAKE_SECONDS (default 600).
+    local fakeTex = tmp .. "/fake_receiver.png"
+    os.execute(string.format("python3.12 -I %q --fake-texture %q", ROOT .. "/tools/test/render_draws.py", fakeTex))
+    texReceiver._path, texStock._path = fakeTex, fakeTex
+    rawset(texReceiver, "_name", "T_AKM_Receiver_BC")
+    local stop = os.time() + tonumber(os.getenv("FAKE_SECONDS") or "600")
+    local ticks = 0
+    while os.time() < stop do
+        panelLoop()
+        ticks = ticks + 1
+        if ticks % 12 == 0 then applyLoop() end
+        os.execute("sleep 0.25")
+    end
+    os.exit(0)
 end
 
--- Bob's mod already published his profile; camo_sync.py mirrored it here.
-local bobDir = tmp .. "/Sync/Bob"
-os.execute(string.format("mkdir -p %q", bobDir .. "/images"))
-os.execute(string.format("cp %q %q", tmp .. "/Camo/07_Tiger.png", bobDir .. "/images/c_bob_tiger.png"))
-local bobProfile = table.concat({
-    "CAS-PROFILE\t1", "player\tBob",
-    "preset\tBP_Weapon_AKM_C\tBobTiger\t3.0000\t1.0000",
-    "sticker\tBP_Weapon_AKM_C\tEvil\t0.5\t0.5\t0.2\t0\t1",
-    "image\tcamo\tBobTiger\tc_bob_tiger.png",
-    "image\tsticker\tEvil\t../../../evil.png",
-}, "\n") .. "\n"
-writeAll(bobDir .. "/profile.txt", bobProfile)
+if os.getenv("HOTKEYS") then
+    -- Second run (HOTKEYS=1): the optional keys work on the gun in your hands.
+    local function press(k) assert(Binds[k], "no bind " .. k)() end
+    press("KEY_F5+CONTROL+ALT")
+    check(body._mats[1]._name:find("^CAS_MID_"), "Ctrl+Alt+F5 paints the gun in hands")
+    press("KEY_F7+CONTROL+ALT")
+    press("KEY_F8+CONTROL+ALT")
+    check(body._mats[1] == miReceiver, "Ctrl+Alt+F8 resets it")
+    check(Binds["KEY_F5"] == nil, "plain F5 stays free for other mods")
+    os.execute(string.format("rm -rf %q", tmp))
+    realPrint(failures == 0 and "\nAll checks passed." or ("\n" .. failures .. " check(s) failed."))
+    os.exit(failures == 0 and 0 or 1)
+end
 
-setHolder(weapon1, pawn)
-setHolder(weapon2, bobPawn)
-package.loaded.config.Sync.Enabled = true
+check(lastLog():find("12 camos, 13 stickers", 1, true), "startup lists the shipped images plus the custom folder's JPG")
+check(next(Binds) == nil, "no hotkeys are registered by default (nothing to clash with other mods)")
+
+panelLoop()
+local st = state()
+check(#st.camos == 12 and #st.stickers == 13 and st.time, "mod writes Panel/state.txt with the image lists and a heartbeat")
+check(body._mats[1] == miReceiver, "commands left over from an earlier session are not replayed")
+
+send("hello")
+send("scan")
+st = state()
+check(st.held == AKM, "state reports the weapon in hands")
+local listsMagazine = false
+for _, w in ipairs(st.weapons) do if w:find("Magazine") then listsMagazine = true end end
+check(not listsMagazine and #st.weapons == 1, "weapon list has the AKM and not the magazine")
 
 Draws = {}
-press("KEY_F5") -- my AKM gets my camo (01_Woodland after the reset above)
-Loops[1]()      -- sync tick: learn my name, publish, read Bob's profile, repaint
+send("camo", AKM, "07_Tiger")
+check(body._mats[1]._name:find("^CAS_MID_") and body._mats[1].Parent == miReceiver, "camo command puts a MID over the original material")
+check(body._mats[1]._params.BaseColor and body._mats[1]._params.BaseColor._class == "TextureRenderTarget2D", "receiver gets the composite render target")
+check(body._mats[2]._params.Albedo ~= nil, "stock uses its own 'Albedo' param")
+check(weapon2._body._mats[1]._name:find("^CAS_MID_"), "every gun of that type is painted")
+check(state().presets[AKM] and state().presets[AKM].Camo == "07_Tiger", "state shows the new preset")
+check(#drawsOf("07_Tiger") > 0 and drawsOf("07_Tiger")[1].Blend == 2, "camo drawn translucent over the original")
 
-check(readAll(tmp .. "/Sync/.me") == "Me", "mod writes Sync/.me with the local player's folder (not the host's remote player)")
-local mine = readAll(tmp .. "/Sync/Me/profile.txt") or ""
-check(mine:find("preset\tBP_Weapon_AKM_C\t01_Woodland", 1, true), "my profile.txt lists my preset")
-check(readAll(tmp .. "/Sync/Me/images/c_01_Woodland.png") ~= nil, "the camo picture I use is copied for the others")
-check(weapon2._body._mats[1]._name:find("^CAS_MID_") and camoDrawnFor("c_bob_tiger"),
-    "the AKM in Bob's hands is painted with Bob's synced camo")
-check(weapon1._body._mats[1]._name:find("^CAS_MID_") and camoDrawnFor("01_Woodland"), "my AKM keeps my camo")
-local importedEvil = false
-for _, path in ipairs(Imports) do if path:find("evil") then importedEvil = true end end
-check(not importedEvil, "a path-traversal image name in a remote profile is ignored")
+Draws = {}
+send("scale", AKM, "4")
+send("strength", AKM, "0.5")
+local d = drawsOf("07_Tiger")
+check(#d > 0 and d[#d].UV.X == 4 and d[#d].Alpha == 0.5, "scale and strength sliders reach the drawing")
 
--- Bob drops his gun: it keeps his look.
-setHolder(weapon2, nil)
-local before = weapon2._body._mats[1]
-Loops[1]()
-check(weapon2._body._mats[1] == before, "a dropped gun keeps the look of its last holder")
+send("preview", AKM, "1")
+st = state()
+check(st.preview and st.preview.Count == 2 and st.preview.Path ~= "" and readAll(st.preview.Path) == "PNG",
+    "preview command exports the weapon texture for the panel")
+local counter = st.preview.Counter
 
--- Bob switches to factory finish.
-writeAll(bobDir .. "/profile.txt", "CAS-PROFILE\t1\nplayer\tBob\n")
-Loops[1]()
-check(weapon2._body._mats[1] == miReceiver, "Bob removing his camo resets his gun on my screen")
-check(weapon1._body._mats[1]._name:find("^CAS_MID_"), "...and doesn't touch mine")
+Draws = {}
+send("add_sticker", AKM, "05_Smiley")
+st = state()
+check(#st.st == 1 and st.st[1].Name == "05_Smiley", "add_sticker adds a sticker")
+check(st.preview.Counter > counter, "the preview refreshes after an edit")
+send("set_sticker", AKM, "1", "", "0.8", "0.2", "0.25", "45", "")
+st = state()
+check(math.abs(st.st[1].U - 0.8) < 1e-6 and math.abs(st.st[1].V - 0.2) < 1e-6, "set_sticker moves the sticker (drag on the preview)")
+local sd = drawsOf("05_Smiley")
+local onWeapon = false
+for _, x in ipairs(sd) do if x.Rot == 45 and math.abs(x.Size.X - 0.25 * 2048) < 1e-6 then onWeapon = true end end
+check(onWeapon, "rotation and size reach the weapon texture")
+send("set_sticker", AKM, "1", "99_MyLogo", "", "", "", "", "2")
+st = state()
+check(st.st[1].Name == "99_MyLogo" and st.st[1].Tex == 2, "sticker image and target texture can be changed (got " .. tostring(st.st[1].Name) .. " tex " .. tostring(st.st[1].Tex) .. ")")
 
--- Bob leaves the session.
-writeAll(bobDir .. "/profile.txt", bobProfile)
-Loops[1]()
-check(weapon2._body._mats[1]._name:find("^CAS_MID_"), "Bob's profile change back is picked up")
-table.remove(PlayerStates, 2)
-Loops[1]()
-check(weapon2._body._mats[1] == miReceiver, "when Bob leaves, his gun falls back to factory (PlayersWithoutMod)")
+local saved = readAll(tmp .. "/presets.lua") or ""
+check(saved:find(AKM, 1, true) and saved:find("99_MyLogo", 1, true), "presets.lua is saved")
+
+-- A half-written line is not executed until it is complete.
+do
+    local f = assert(io.open(CMD, "ab")) f:write((seq + 1) .. "\tcamo\t" .. AKM .. "\t01_Wood") f:close()
+    panelLoop()
+    check(state().presets[AKM].Camo == "07_Tiger", "a partial command line is ignored")
+    f = assert(io.open(CMD, "ab")) f:write("land\n") f:close()
+    seq = seq + 1
+    panelLoop()
+    check(state().presets[AKM].Camo == "01_Woodland", "...and runs once the line is complete")
+end
+
+-- Guns that appear later get the preset; game resets are undone.
+local weapon3 = newWeapon(AKM, 500)
+Actors[#Actors + 1] = weapon3
+applyLoop()
+check(weapon3._body._mats[1]._name:find("^CAS_MID_"), "auto-apply paints a newly spawned gun")
+weapon3._body._mats[1], weapon3._body._mats[2] = miReceiver, miStock
+applyLoop()
+check(weapon3._body._mats[1]._name:find("^CAS_MID_"), "auto-apply re-paints after the game resets materials")
+
+-- New picture + "Обновить картинки".
+os.execute(string.format("cp %q %q", tmp .. "/Camo/12_Gold.png", tmp .. "/Camo/13_MyCamo.png"))
+local importsBefore = #Imports
+send("reload")
+check(#state().camos == 13, "reload picks up a newly added camo")
+check(#Imports > importsBefore, "reload re-imports textures from disk")
+send("camo", AKM, "13_MyCamo")
+check(state().presets[AKM].Camo == "13_MyCamo", "the new camo can be selected")
+send("camo", AKM, "no_such_camo")
+check(state().presets[AKM].Camo == "", "an unknown camo name means no camo")
+
+send("diagnostics")
+local diag = readAll(tmp .. "/Panel/diagnostics.txt") or ""
+check(diag:find(AKM, 1, true) and diag:find("Magazine", 1, true) and diag:find("BaseColor", 1, true),
+    "diagnostics lists nearby classes and the weapon's material params")
+
+send("remove_sticker", AKM, "1")
+check(#state().st == 0, "remove_sticker removes it")
+send("reset", AKM)
+check(body._mats[1] == miReceiver and body._mats[2] == miStock, "reset restores the original materials")
+check(not (readAll(tmp .. "/presets.lua") or ""):find(AKM, 1, true), "reset removes the saved preset")
+
+-- The panel was restarted with a fresh commands file: numbering starts over.
+os.remove(CMD)
+seq = 0
+send("camo", AKM, "02_Desert")
+check(state().presets[AKM] and state().presets[AKM].Camo == "02_Desert", "a fresh commands file from a restarted panel works")
+
+local glassUntouched = true
+weapon1:K2_GetComponentsByClass():ForEach(function(_, e)
+    local c = e:get()
+    if c._mats[1] ~= miGlass and c._name ~= "WeaponMesh" then glassUntouched = false end
+end)
+check(glassUntouched, "glass/lens materials are left alone")
 
 os.execute(string.format("rm -rf %q", tmp))
 realPrint(failures == 0 and "\nAll checks passed." or ("\n" .. failures .. " check(s) failed."))
