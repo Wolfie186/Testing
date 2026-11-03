@@ -8,10 +8,16 @@ class CfgPatches {
         units[] = {};
         weapons[] = {};
         requiredVersion = 2.14;
-        requiredAddons[] = {"A3_Functions_F", "A3_Characters_F", "A3_Weapons_F"};
+        requiredAddons[] = {"A3_Functions_F", "A3_Characters_F", "A3_Weapons_F", "cba_main", "cba_settings", "cba_xeh"};
         version = MAJOR.MINOR;
         versionStr = "1.0.0";
         versionAr[] = {MAJOR, MINOR, PATCHLVL};
+    };
+};
+
+class Extended_PreInit_EventHandlers {
+    class sai_main {
+        init = "call compileScript ['\z\sai\addons\main\XEH_preInit.sqf']";
     };
 };
 
@@ -21,8 +27,8 @@ class CfgFunctions {
 
         class core {
             file = "\z\sai\addons\main\functions\core";
-            class settings { preInit = 1; };
-            class init { postInit = 1; };
+            class settings {};
+            class init {};
             class loop {};
             class isValidGroup {};
             class initGroup {};
@@ -62,6 +68,8 @@ class CfgFunctions {
             class handleReinforceRequest {};
             class buddyAidCheck {};
             class buddyAid {};
+            class aceIsWounded {};
+            class aceTreat {};
         };
 
         class debug {

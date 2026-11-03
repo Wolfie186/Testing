@@ -1,5 +1,5 @@
 /*
-    SAI_fnc_init (postInit)
+    SAI_fnc_init (on CBA_settingsInitialized)
     Starts the Smart AI manager. Runs on every machine (server, headless
     clients, players); each machine only drives the AI groups local to it.
 */

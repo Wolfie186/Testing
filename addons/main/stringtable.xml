@@ -121,10 +121,6 @@
             <English>Buddy aid</English>
             <Russian>Помощь раненым</Russian>
         </Key>
-        <Key ID="STR_SAI_buddyAid_tip">
-            <English>Squad mates heal the wounded (disabled automatically with ACE medical).</English>
-            <Russian>Сослуживцы лечат раненых (автоматически отключается с ACE medical).</Russian>
-        </Key>
         <Key ID="STR_SAI_intel">
             <English>Share contact reports</English>
             <Russian>Обмен разведданными</Russian>
@@ -164,6 +160,38 @@
         <Key ID="STR_SAI_respectWaypoints_tip">
             <English>Groups following mission waypoints still fight smart but are not sent elsewhere.</English>
             <Russian>Группы на маршруте миссии воюют умно, но никуда не перенаправляются.</Russian>
+        </Key>
+        <Key ID="STR_SAI_cat_medical">
+            <English>Medical</English>
+            <Russian>Медицина</Russian>
+        </Key>
+        <Key ID="STR_SAI_buddyAid_tip">
+            <English>Squad mates run to the wounded under smoke and treat them (vanilla or ACE medical).</English>
+            <Russian>Сослуживцы под дымом подбегают к раненым и лечат их (ванильная медицина или ACE).</Russian>
+        </Key>
+        <Key ID="STR_SAI_selfAid">
+            <English>Self aid</English>
+            <Russian>Самопомощь</Russian>
+        </Key>
+        <Key ID="STR_SAI_selfAid_tip">
+            <English>If nobody can help, a conscious wounded man treats himself.</English>
+            <Russian>Если помочь некому, раненый в сознании лечит себя сам.</Russian>
+        </Key>
+        <Key ID="STR_SAI_aidRadius">
+            <English>Buddy aid radius (m)</English>
+            <Russian>Радиус помощи раненым (м)</Russian>
+        </Key>
+        <Key ID="STR_SAI_aidRadius_tip">
+            <English>How far a squad mate will run to help a wounded man.</English>
+            <Russian>Как далеко боец побежит к раненому.</Russian>
+        </Key>
+        <Key ID="STR_SAI_aceMedical">
+            <English>ACE: treat in combat</English>
+            <Russian>ACE: лечение в бою</Russian>
+        </Key>
+        <Key ID="STR_SAI_aceMedical_tip">
+            <English>With ACE medical: bandages, CPR, IV, epinephrine and morphine under fire. ACE's own AI medic still handles quiet moments.</English>
+            <Russian>С ACE medical: бинты, СЛР, капельницы, адреналин и морфин под огнём. Вне боя по-прежнему работает встроенный ИИ-медик ACE.</Russian>
         </Key>
     </Package>
 </Project>

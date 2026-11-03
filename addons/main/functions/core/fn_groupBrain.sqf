@@ -108,7 +108,7 @@ if (_enemies isEqualTo []) then {
         };
 
         if (SAI_grenades && {_canFire} && {_state != "FALLBACK"}) then { [_grp, _units, _enemies] call SAI_fnc_grenadeCheck };
-        if (SAI_buddyAid && {!SAI_hasACEMedical}) then { [_grp, _units, _ePos] call SAI_fnc_buddyAidCheck };
+        if (SAI_buddyAid && {!SAI_hasACEMedical || {SAI_aceMedical}}) then { [_grp, _units, _ePos] call SAI_fnc_buddyAidCheck };
     };
 
     if (SAI_reinforce && {_threat >= _strength * 0.8} && {_now > _grp getVariable ["SAI_nextReinforce", 0]}) then {
