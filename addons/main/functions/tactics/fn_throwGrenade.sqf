@@ -9,9 +9,10 @@ private _muzzle = [_unit, _smoke] call SAI_fnc_getGrenadeMuzzle;
 if (_muzzle == "") exitWith {false};
 if (!_smoke && {[side group _unit, _posASL, 10] call SAI_fnc_isFriendlyNear}) exitWith {false};
 
-_unit setVariable ["SAI_busyUntil", time + 5];
-[_unit, _posASL, _muzzle] spawn {
-    params ["_unit", "_posASL", "_muzzle"];
+private _prevBusy = _unit getVariable ["SAI_busyUntil", 0];
+_unit setVariable ["SAI_busyUntil", _prevBusy max (time + 5)];
+[_unit, _posASL, _muzzle, _prevBusy] spawn {
+    params ["_unit", "_posASL", "_muzzle", "_prevBusy"];
     private _d = _unit distance2D _posASL;
     // aim above the target so the throw arcs over cover
     _unit doWatch (ASLToAGL (_posASL vectorAdd [0, 0, (_d * 0.35) min 12]));
@@ -21,6 +22,6 @@ _unit setVariable ["SAI_busyUntil", time + 5];
     };
     sleep 1.5;
     if (alive _unit) then { _unit doWatch objNull };
-    _unit setVariable ["SAI_busyUntil", 0];
+    _unit setVariable ["SAI_busyUntil", _prevBusy];
 };
 true

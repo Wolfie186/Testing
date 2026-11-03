@@ -14,7 +14,7 @@ if (_targets isEqualTo []) exitWith {};
         if (!isNull _g) then {
             { _x params ["_tgt", "_k"]; if (alive _tgt) then { _g reveal [_tgt, _k] } } forEach _payload;
             if ((_g getVariable ["SAI_state", "SAFE"]) == "SAFE") then {
-                _g setVariable ["SAI_state", "ALERT"];
+                _g setVariable ["SAI_state", "ALERT", true];
                 _g setVariable ["SAI_lastContact", time];
                 _g setBehaviour "AWARE";
             };

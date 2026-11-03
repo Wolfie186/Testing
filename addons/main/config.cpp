@@ -39,6 +39,7 @@ class CfgFunctions {
             class canMove {};
             class isMG {};
             class isFriendlyNear {};
+            class launcherType {};
         };
 
         class tactics {
@@ -57,7 +58,59 @@ class CfgFunctions {
             class throwGrenade {};
             class fallback {};
             class search {};
+        };
+
+        class commander {
+            file = "\z\sai\addons\main\functions\commander";
+            class commanderLoop {};
+            class cmdPlan {};
+            class cmdClusters {};
+            class cmdReport {};
+            class cmdAssign {};
+            class cmdRecent {};
+            class reportContacts {};
+            class targetType {};
+        };
+
+        class tasks {
+            file = "\z\sai\addons\main\functions\tasks";
+            class taskExec {};
+            class taskRun {};
+            class taskDone {};
+            class ambushSetup {};
+            class ambushSpring {};
+            class bound {};
+            class atCheck {};
+            class manStatics {};
+        };
+
+        class nav {
+            file = "\z\sai\addons\main\functions\nav";
+            class tacticalPath {};
+            class moveAlongPath {};
+            class clearTempWPs {};
+            class memKey {};
+            class memAdd {};
+            class memApply {};
+            class memDanger {};
+            class memNests {};
+        };
+
+        class vehicles {
+            file = "\z\sai\addons\main\functions\vehicles";
+            class vehLoop {};
+            class vehInit {};
+            class vehBrain {};
             class vehicleBrain {};
+            class vehCombat {};
+            class vehFindPos {};
+            class vehReposition {};
+            class vehSmoke {};
+            class vehOnIncoming {};
+            class vehOnHit {};
+            class vehTransport {};
+            class vehDismount {};
+            class vehHeli {};
         };
 
         class support {
@@ -75,6 +128,7 @@ class CfgFunctions {
         class debug {
             file = "\z\sai\addons\main\functions\debug";
             class debugMarker {};
+            class debugCluster {};
             class debugTest {};
             class log {};
         };

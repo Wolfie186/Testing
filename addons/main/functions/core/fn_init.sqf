@@ -9,4 +9,6 @@ SAI_groupCounter = 0;
 SAI_hasACEMedical = isClass (configFile >> "CfgPatches" >> "ace_medical");
 
 [] spawn SAI_fnc_loop;
+[] spawn SAI_fnc_vehLoop;
+if (isServer) then { [] spawn SAI_fnc_commanderLoop };
 ["Smart AI initialized (ACE medical: %1)", SAI_hasACEMedical] call SAI_fnc_log;

@@ -193,5 +193,101 @@
             <English>With ACE medical: bandages, CPR, IV, epinephrine and morphine under fire. ACE's own AI medic still handles quiet moments.</English>
             <Russian>С ACE medical: бинты, СЛР, капельницы, адреналин и морфин под огнём. Вне боя по-прежнему работает встроенный ИИ-медик ACE.</Russian>
         </Key>
+        <Key ID="STR_SAI_cat_command">
+            <English>Command</English>
+            <Russian>Командование</Russian>
+        </Key>
+        <Key ID="STR_SAI_cat_vehicles">
+            <English>Vehicles</English>
+            <Russian>Техника</Russian>
+        </Key>
+        <Key ID="STR_SAI_commander">
+            <English>Side commander</English>
+            <Russian>Командир стороны</Russian>
+        </Key>
+        <Key ID="STR_SAI_commander_tip">
+            <English>Coordinates groups using only reported intel: envelopments, ambushes on your predicted route, cut-offs, AT hunts, second lines, reserves.</English>
+            <Russian>Координирует группы только по полученным разведданным: охваты, засады на прогнозируемом маршруте, отсечение, охота на бронетехнику, вторая линия, резерв.</Russian>
+        </Key>
+        <Key ID="STR_SAI_cmdTick">
+            <English>Commander interval (s)</English>
+            <Russian>Интервал командира (с)</Russian>
+        </Key>
+        <Key ID="STR_SAI_cmdTick_tip">
+            <English>How often the commander re-plans.</English>
+            <Russian>Как часто командир пересматривает план.</Russian>
+        </Key>
+        <Key ID="STR_SAI_ambush">
+            <English>Ambushes</English>
+            <Russian>Засады</Russian>
+        </Key>
+        <Key ID="STR_SAI_ambush_tip">
+            <English>Groups lie in wait on the enemy's predicted route and open fire together.</English>
+            <Russian>Группы ждут на прогнозируемом маршруте противника и открывают огонь одновременно.</Russian>
+        </Key>
+        <Key ID="STR_SAI_tacticalPathing">
+            <English>Concealed routes</English>
+            <Russian>Скрытные маршруты</Russian>
+        </Key>
+        <Key ID="STR_SAI_tacticalPathing_tip">
+            <English>Own route planner: avoids ground the enemy can see, prefers cover, avoids places where friendlies died.</English>
+            <Russian>Собственный планировщик: обходит просматриваемые противником участки, держится укрытий, избегает мест гибели своих.</Russian>
+        </Key>
+        <Key ID="STR_SAI_memory">
+            <English>Battlefield memory</English>
+            <Russian>Память о бое</Russian>
+        </Key>
+        <Key ID="STR_SAI_memory_tip">
+            <English>Remember where friendlies were killed and where the enemy fired from; recon by fire on old enemy positions.</English>
+            <Russian>Запоминать, где гибли свои и откуда стрелял противник; разведка огнём по старым позициям противника.</Russian>
+        </Key>
+        <Key ID="STR_SAI_antiTank">
+            <English>Anti-tank tactics</English>
+            <Russian>Противотанковая тактика</Russian>
+        </Key>
+        <Key ID="STR_SAI_antiTank_tip">
+            <English>AT gunners move to the side/rear of enemy vehicles before firing.</English>
+            <Russian>Гранатомётчики заходят в борт или корму техники перед выстрелом.</Russian>
+        </Key>
+        <Key ID="STR_SAI_statics">
+            <English>Use static weapons</English>
+            <Russian>Использовать станковое оружие</Russian>
+        </Key>
+        <Key ID="STR_SAI_statics_tip">
+            <English>Squads in combat man empty static weapons nearby that can see the enemy.</English>
+            <Russian>Отделения в бою занимают пустое станковое оружие рядом, если оттуда видно противника.</Russian>
+        </Key>
+        <Key ID="STR_SAI_vehicles">
+            <English>Vehicle AI</English>
+            <Russian>ИИ техники</Russian>
+        </Key>
+        <Key ID="STR_SAI_vehicles_tip">
+            <English>Master switch for all vehicle behaviour.</English>
+            <Russian>Главный переключатель поведения техники.</Russian>
+        </Key>
+        <Key ID="STR_SAI_vehHullDown">
+            <English>Hull-down and shoot-and-scoot</English>
+            <Russian>Позиции из-за гребня и смена позиций</Russian>
+        </Key>
+        <Key ID="STR_SAI_vehHullDown_tip">
+            <English>Armour fights from hull-down positions at stand-off range, relocates after firing or being hit, backs off from AT teams.</English>
+            <Russian>Бронетехника стреляет из-за укрытия рельефа с дистанции, меняет позицию после выстрелов и попаданий, отходит от гранатомётчиков.</Russian>
+        </Key>
+        <Key ID="STR_SAI_vehDismount">
+            <English>Dismount in cover</English>
+            <Russian>Спешивание в укрытии</Russian>
+        </Key>
+        <Key ID="STR_SAI_vehDismount_tip">
+            <English>Transports stop in dead ground before the enemy and unload troops there.</English>
+            <Russian>Транспорт останавливается в мёртвой зоне перед противником и высаживает десант там.</Russian>
+        </Key>
+        <Key ID="STR_SAI_heli">
+            <English>Helicopter AI</English>
+            <Russian>ИИ вертолётов</Russian>
+        </Key>
+        <Key ID="STR_SAI_heli_tip">
+            <English>No landing in hot LZs, terrain masking near AA, gunships keep stand-off from launcher teams.</English>
+            <Russian>Не садятся в горячие зоны, летят низко при угрозе ПВО, ударные вертолёты держат дистанцию от расчётов ПЗРК/ПТРК.</Russian>
+        </Key>
     </Package>
 </Project>

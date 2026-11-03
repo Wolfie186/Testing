@@ -11,7 +11,8 @@ private _pos = if (_target isEqualType objNull) then { getPosASL _target } else 
 _pos = _pos vectorAdd [(random 6) - 3, (random 6) - 3, 0.7 + random 0.6];
 private _duration = [5, 9] select ([_unit] call SAI_fnc_isMG);
 
-_unit setVariable ["SAI_busyUntil", time + _duration + 2];
+private _prevBusy = _unit getVariable ["SAI_busyUntil", 0];
+_unit setVariable ["SAI_busyUntil", _prevBusy max (time + _duration + 2)];
 _unit selectWeapon primaryWeapon _unit;
 _unit doWatch (ASLToAGL _pos);
 sleep (0.5 + random 0.8);
@@ -20,4 +21,4 @@ _unit doSuppressiveFire _pos;
 _unit suppressFor _duration;
 sleep _duration;
 if (alive _unit) then { _unit doWatch objNull };
-_unit setVariable ["SAI_busyUntil", 0];
+_unit setVariable ["SAI_busyUntil", _prevBusy];

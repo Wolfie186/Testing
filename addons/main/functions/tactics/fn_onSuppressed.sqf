@@ -22,6 +22,7 @@ if (isNull _src) exitWith {};
 // We only roughly know where it came from
 private _srcPos = (getPosASL _src) vectorAdd [(random 16) - 8, (random 16) - 8, 0];
 _grp reveal [_src, 1];
+if ((_grp getVariable ["SAI_state", ""]) == "AMBUSH") exitWith { [_grp, ASLToAGL _srcPos] call SAI_fnc_ambushSpring };
 
 if (_unit getVariable ["SAI_busyUntil", 0] > _now) exitWith {
     // Busy (flanking, healing...): just hug the ground for a moment if it is really heavy

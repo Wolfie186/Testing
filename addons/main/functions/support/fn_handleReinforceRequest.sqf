@@ -21,7 +21,7 @@ private _sorted = _cands apply { [(leader _x) distance2D _pos, _x] };
 _sorted sort true;
 private _g = _sorted select 0 select 1;
 
-_g setVariable ["SAI_state", "REINFORCING"];
+_g setVariable ["SAI_state", "REINFORCING", true];
 _g setVariable ["SAI_reinforceUntil", time + 300];
 _g setBehaviour "AWARE";
 _g setSpeedMode "FULL";

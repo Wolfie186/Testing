@@ -14,6 +14,8 @@ _name setMarkerColorLocal (switch (_state) do {
     case "SEARCH":      {"ColorYellow"};
     case "REINFORCING": {"ColorBlue"};
     case "ALERT":       {"ColorKhaki"};
+    case "AMBUSH":      {"ColorBlack"};
+    case "MANOEUVRE":   {"ColorBrown"};
     default             {"ColorGreen"};
 });
 _name setMarkerTextLocal format ["%1 %2 (%3)", groupId _grp, _state, {alive _x} count units _grp];

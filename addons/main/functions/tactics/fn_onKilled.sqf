@@ -6,6 +6,7 @@ private _src = [_killer, _instigator] select (!isNull _instigator);
 if (isNull _src || {_src == _unit} || {(side _grp getFriend side group _src) >= 0.6}) exitWith {};
 
 _grp reveal [_src, 1];
+if (SAI_memory) then { [side _grp, getPosATL _unit, getPosATL _src] call SAI_fnc_memAdd };
 private _srcPos = (getPosASL _src) vectorAdd [(random 20) - 10, (random 20) - 10, 0];
 // Nearby mates go to cover
 {

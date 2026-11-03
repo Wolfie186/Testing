@@ -2,11 +2,11 @@
     SAI_fnc_findCover
     Finds a nearby position that is actually hidden from the threat
     (validated with a line-of-fire check at crouch height).
-    Params: unit, threat position ASL, search radius
+    Params: unit, threat position ASL, search radius, optional search centre (AGL)
     Returns: position AGL, or [] if nothing found.
 */
-params ["_unit", "_threatASL", ["_radius", 25]];
-private _uPos = getPosATL _unit;
+params ["_unit", "_threatASL", ["_radius", 25], ["_center", []]];
+private _uPos = [_center, getPosATL _unit] select (_center isEqualTo []);
 private _threatEye = _threatASL vectorAdd [0, 0, 1.5];
 private _uThreatDist = _uPos distance2D _threatASL;
 
@@ -15,7 +15,7 @@ private _objs = nearestTerrainObjects [_uPos, ["TREE", "ROCK", "ROCKS", "WALL", 
     if (crew _x isEqualTo [] && {!(_x isKindOf "CAManBase")}) then { _objs pushBackUnique _x };
 } forEach (nearestObjects [_uPos, ["Building", "Wall", "Car", "Tank", "Strategic"], _radius]);
 
-private _sorted = _objs apply { [_x distance2D _unit, _x] };
+private _sorted = _objs apply { [_x distance2D _uPos, _x] };
 _sorted sort true;
 
 private _occupied = {
