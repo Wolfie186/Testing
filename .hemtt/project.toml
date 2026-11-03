@@ -1,0 +1,11 @@
+name = "Smart AI"
+author = "wolfie186"
+prefix = "sai"
+mainprefix = "z"
+
+[files]
+include = ["mod.cpp", "README.md", "LICENSE"]
+
+[version]
+path = "addons/main/script_version.hpp"
+git_hash = 0

@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project name="SAI">
+    <Package name="main">
+        <Key ID="STR_SAI_cat_main">
+            <English>Smart AI</English>
+            <Russian>Smart AI</Russian>
+        </Key>
+        <Key ID="STR_SAI_cat_general">
+            <English>General</English>
+            <Russian>Общие</Russian>
+        </Key>
+        <Key ID="STR_SAI_cat_skill">
+            <English>Skill</English>
+            <Russian>Навыки</Russian>
+        </Key>
+        <Key ID="STR_SAI_cat_tactics">
+            <English>Tactics</English>
+            <Russian>Тактика</Russian>
+        </Key>
+        <Key ID="STR_SAI_cat_coord">
+            <English>Coordination</English>
+            <Russian>Взаимодействие</Russian>
+        </Key>
+        <Key ID="STR_SAI_enabled">
+            <English>Enable Smart AI</English>
+            <Russian>Включить Smart AI</Russian>
+        </Key>
+        <Key ID="STR_SAI_enabled_tip">
+            <English>Master switch for all Smart AI behaviour.</English>
+            <Russian>Главный переключатель всего поведения Smart AI.</Russian>
+        </Key>
+        <Key ID="STR_SAI_debug">
+            <English>Debug mode</English>
+            <Russian>Режим отладки</Russian>
+        </Key>
+        <Key ID="STR_SAI_debug_tip">
+            <English>Map markers with each group's state and chat messages about decisions.</English>
+            <Russian>Маркеры на карте с состоянием групп и сообщения в чат о решениях ИИ.</Russian>
+        </Key>
+        <Key ID="STR_SAI_tick">
+            <English>Update interval (s)</English>
+            <Russian>Интервал обновления (с)</Russian>
+        </Key>
+        <Key ID="STR_SAI_tick_tip">
+            <English>How often every group re-evaluates the situation. Lower = more reactive, more CPU.</English>
+            <Russian>Как часто группы оценивают обстановку. Меньше = быстрее реакция, выше нагрузка.</Russian>
+        </Key>
+        <Key ID="STR_SAI_applySkills">
+            <English>Apply skill profile</English>
+            <Russian>Применять профиль навыков</Russian>
+        </Key>
+        <Key ID="STR_SAI_applySkills_tip">
+            <English>Human-like aim with high awareness. Disable to keep mission/server skills.</English>
+            <Russian>Человеческая точность и высокая внимательность. Выключите, чтобы оставить навыки миссии/сервера.</Russian>
+        </Key>
+        <Key ID="STR_SAI_skill">
+            <English>Shooting difficulty</English>
+            <Russian>Сложность стрельбы</Russian>
+        </Key>
+        <Key ID="STR_SAI_skill_tip">
+            <English>0.1 = poor shots, 1 = very dangerous. Tactics are smart at any value.</English>
+            <Russian>0.1 = стреляют плохо, 1 = очень опасны. Тактика умная при любом значении.</Russian>
+        </Key>
+        <Key ID="STR_SAI_cover">
+            <English>Seek cover</English>
+            <Russian>Поиск укрытий</Russian>
+        </Key>
+        <Key ID="STR_SAI_cover_tip">
+            <English>Units under fire move to positions really hidden from the shooter.</English>
+            <Russian>Под огнём бойцы перебегают в позиции, реально скрытые от стрелка.</Russian>
+        </Key>
+        <Key ID="STR_SAI_suppression">
+            <English>Suppressive fire</English>
+            <Russian>Огонь на подавление</Russian>
+        </Key>
+        <Key ID="STR_SAI_suppression_tip">
+            <English>Return fire and pin down the enemy, machine gunners first.</English>
+            <Russian>Ответный огонь и прижатие противника, в первую очередь пулемётчиками.</Russian>
+        </Key>
+        <Key ID="STR_SAI_flanking">
+            <English>Flanking</English>
+            <Russian>Фланговые манёвры</Russian>
+        </Key>
+        <Key ID="STR_SAI_flanking_tip">
+            <English>Part of the squad suppresses while the other part goes around the side.</English>
+            <Russian>Часть отделения подавляет, другая обходит с фланга.</Russian>
+        </Key>
+        <Key ID="STR_SAI_grenades">
+            <English>Grenades</English>
+            <Russian>Гранаты</Russian>
+        </Key>
+        <Key ID="STR_SAI_grenades_tip">
+            <English>Throw frag grenades at close enemies hiding in cover or buildings.</English>
+            <Russian>Бросать осколочные гранаты в близкого противника за укрытием или в здании.</Russian>
+        </Key>
+        <Key ID="STR_SAI_smoke">
+            <English>Smoke</English>
+            <Russian>Дымы</Russian>
+        </Key>
+        <Key ID="STR_SAI_smoke_tip">
+            <English>Smoke screens when retreating or rescuing wounded.</English>
+            <Russian>Дымовая завеса при отходе и спасении раненых.</Russian>
+        </Key>
+        <Key ID="STR_SAI_fallback">
+            <English>Fall back</English>
+            <Russian>Отступление</Russian>
+        </Key>
+        <Key ID="STR_SAI_fallback_tip">
+            <English>Badly beaten squads retreat under cover and regroup instead of dying in place.</English>
+            <Russian>Сильно потрёпанные отделения отходят под прикрытием и перегруппировываются.</Russian>
+        </Key>
+        <Key ID="STR_SAI_search">
+            <English>Search for lost contact</English>
+            <Russian>Поиск потерянного противника</Russian>
+        </Key>
+        <Key ID="STR_SAI_search_tip">
+            <English>Check the last known enemy position instead of forgetting about him.</English>
+            <Russian>Проверять последнюю известную позицию противника, а не забывать о нём.</Russian>
+        </Key>
+        <Key ID="STR_SAI_buddyAid">
+            <English>Buddy aid</English>
+            <Russian>Помощь раненым</Russian>
+        </Key>
+        <Key ID="STR_SAI_buddyAid_tip">
+            <English>Squad mates heal the wounded (disabled automatically with ACE medical).</English>
+            <Russian>Сослуживцы лечат раненых (автоматически отключается с ACE medical).</Russian>
+        </Key>
+        <Key ID="STR_SAI_intel">
+            <English>Share contact reports</English>
+            <Russian>Обмен разведданными</Russian>
+        </Key>
+        <Key ID="STR_SAI_intel_tip">
+            <English>Groups report enemy positions to friendly groups in radio range.</English>
+            <Russian>Группы сообщают о противнике дружественным группам в радиусе связи.</Russian>
+        </Key>
+        <Key ID="STR_SAI_intelRadius">
+            <English>Radio range (m)</English>
+            <Russian>Дальность связи (м)</Russian>
+        </Key>
+        <Key ID="STR_SAI_intelRadius_tip">
+            <English>Range for contact reports.</English>
+            <Russian>Дальность передачи разведданных.</Russian>
+        </Key>
+        <Key ID="STR_SAI_reinforce">
+            <English>Reinforcements</English>
+            <Russian>Подкрепления</Russian>
+        </Key>
+        <Key ID="STR_SAI_reinforce_tip">
+            <English>Outnumbered groups call the nearest idle group for help.</English>
+            <Russian>Группы в меньшинстве вызывают ближайшую свободную группу на помощь.</Russian>
+        </Key>
+        <Key ID="STR_SAI_reinforceRadius">
+            <English>Reinforcement radius (m)</English>
+            <Russian>Радиус подкреплений (м)</Russian>
+        </Key>
+        <Key ID="STR_SAI_reinforceRadius_tip">
+            <English>How far away groups may answer a call for help.</English>
+            <Russian>С какого расстояния группы могут прийти на помощь.</Russian>
+        </Key>
+        <Key ID="STR_SAI_respectWaypoints">
+            <English>Respect mission waypoints</English>
+            <Russian>Не ломать вейпоинты миссии</Russian>
+        </Key>
+        <Key ID="STR_SAI_respectWaypoints_tip">
+            <English>Groups following mission waypoints still fight smart but are not sent elsewhere.</English>
+            <Russian>Группы на маршруте миссии воюют умно, но никуда не перенаправляются.</Russian>
+        </Key>
+    </Package>
+</Project>
