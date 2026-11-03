@@ -4,7 +4,7 @@
     Returns true if a throw was started.
 */
 params ["_unit", "_posASL", ["_smoke", false]];
-if (!alive _unit || {vehicle _unit != _unit} || {lifeState _unit == "INCAPACITATED"}) exitWith {false};
+if (!alive _unit || {!isNull objectParent _unit} || {lifeState _unit == "INCAPACITATED"}) exitWith {false};
 private _muzzle = [_unit, _smoke] call SAI_fnc_getGrenadeMuzzle;
 if (_muzzle == "") exitWith {false};
 if (!_smoke && {[side group _unit, _posASL, 10] call SAI_fnc_isFriendlyNear}) exitWith {false};

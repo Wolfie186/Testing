@@ -61,7 +61,7 @@ switch (_type) do {
             [_grp] call SAI_fnc_clearTempWPs;
             _grp setVariable ["SAI_state", "ALERT", true];
             private _threatASL = AGLToASL (_pos getPos [150, _dir]);
-            { if (alive _x && {vehicle _x == _x}) then { [_x, _threatASL, random 3] spawn SAI_fnc_takeCover } } forEach units _grp;
+            { if (alive _x && {isNull objectParent _x}) then { [_x, _threatASL, random 3] spawn SAI_fnc_takeCover } } forEach units _grp;
             sleep 120;
         };
     };

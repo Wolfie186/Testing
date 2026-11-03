@@ -29,7 +29,7 @@ if (SAI_smoke && {_type == "ifv"}) then { [_veh] call SAI_fnc_vehSmoke };
     [_g, _ePos] spawn {
         params ["_g", "_p"];
         sleep 4;
-        { if (alive _x && {vehicle _x == _x}) then { [_x, AGLToASL _p, random 2] spawn SAI_fnc_takeCover } } forEach units _g;
+        { if (alive _x && {isNull objectParent _x}) then { [_x, AGLToASL _p, random 2] spawn SAI_fnc_takeCover } } forEach units _g;
     };
     ["%1 dismounts from %2", groupId _g, typeOf _veh] call SAI_fnc_log;
 } forEach _cgs;

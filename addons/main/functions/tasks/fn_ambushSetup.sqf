@@ -5,7 +5,7 @@
     spots us, or shoots at us.
 */
 params ["_grp", "_pos", "_dir"];
-private _units = (units _grp) select {alive _x && {vehicle _x == _x}};
+private _units = (units _grp) select {alive _x && {isNull objectParent _x}};
 _grp setCombatMode "GREEN";
 _grp setBehaviour "STEALTH";
 _grp setVariable ["SAI_state", "AMBUSH", true];

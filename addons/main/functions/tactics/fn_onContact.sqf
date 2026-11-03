@@ -9,7 +9,7 @@ _grp setBehaviour "COMBAT";
 private _ePosASL = AGLToASL _ePos;
 {
     private _u = _x;
-    if (_u != _leader && {vehicle _u == _u} && {(_u getVariable ["SAI_busyUntil", 0]) < time}) then {
+    if (_u != _leader && {isNull objectParent _u} && {(_u getVariable ["SAI_busyUntil", 0]) < time}) then {
         if (_canFire && {SAI_suppression} && {[_u] call SAI_fnc_isMG}) then {
             [_u, _ePosASL] spawn SAI_fnc_suppressFire;
         } else {

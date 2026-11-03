@@ -10,7 +10,7 @@ if (SAI_memory) then { [side _grp, getPosATL _unit, getPosATL _src] call SAI_fnc
 private _srcPos = (getPosASL _src) vectorAdd [(random 20) - 10, (random 20) - 10, 0];
 // Nearby mates go to cover
 {
-    if (alive _x && {vehicle _x == _x} && {_x distance _unit < 30} && {random 1 < 0.6}) then {
+    if (alive _x && {isNull objectParent _x} && {_x distance _unit < 30} && {random 1 < 0.6}) then {
         [_x, _srcPos, random 1.5] spawn SAI_fnc_takeCover;
     };
 } forEach units _grp;

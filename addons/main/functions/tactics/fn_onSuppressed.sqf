@@ -7,7 +7,7 @@ params ["_unit", "_distance", "_shooter", "_instigator"];
 if (!SAI_enabled || {!alive _unit} || {!local _unit} || {isPlayer _unit}) exitWith {};
 private _grp = group _unit;
 if !([_grp] call SAI_fnc_isValidGroup) exitWith {};
-if (vehicle _unit != _unit) exitWith {};
+if (!isNull objectParent _unit) exitWith {};
 
 private _now = time;
 private _supp = _unit getVariable ["SAI_supp", 0];
@@ -39,7 +39,7 @@ if (SAI_cover && {_supp > 0.25}) then {
 // Return fire: a groupmate who is not busy suppresses the shooter's area
 if (SAI_suppression && {combatMode _grp in ["YELLOW", "RED"]} && {_now > _grp getVariable ["SAI_nextReturnFire", 0]}) then {
     private _buddies = ((units _grp) - [_unit]) select {
-        alive _x && {vehicle _x == _x} && {(_x getVariable ["SAI_busyUntil", 0]) < _now} && {_x distance _unit < 50}
+        alive _x && {isNull objectParent _x} && {(_x getVariable ["SAI_busyUntil", 0]) < _now} && {_x distance _unit < 50}
     };
     if (_buddies isNotEqualTo []) then {
         _grp setVariable ["SAI_nextReturnFire", _now + 6 + random 4];

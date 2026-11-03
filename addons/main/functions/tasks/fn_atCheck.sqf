@@ -12,7 +12,7 @@ if (_armor isEqualTo []) exitWith {};
 (_armor select 0) params ["_d", "_veh"];
 
 {
-    if (vehicle _x == _x && {([_x] call SAI_fnc_launcherType) == "AT"} && {(_x getVariable ["SAI_busyUntil", 0]) < _now} && {lifeState _x != "INCAPACITATED"}) then {
+    if (isNull objectParent _x && {([_x] call SAI_fnc_launcherType) == "AT"} && {(_x getVariable ["SAI_busyUntil", 0]) < _now} && {lifeState _x != "INCAPACITATED"}) then {
         [_x, _veh] spawn {
             params ["_u", "_veh"];
             _u setVariable ["SAI_busyUntil", time + 40];

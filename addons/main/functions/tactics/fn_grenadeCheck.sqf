@@ -17,7 +17,7 @@ private _done = false;
         {
             private _td = _x distance2D _ePos;
             if (
-                vehicle _x == _x && {_td > 12} && {_td < 38}
+                isNull objectParent _x && {_td > 12} && {_td < 38}
                 && {(_x getVariable ["SAI_busyUntil", 0]) < _now}
                 && {lifeState _x != "INCAPACITATED"}
             ) exitWith { _thrower = _x };

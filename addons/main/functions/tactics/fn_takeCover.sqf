@@ -5,7 +5,7 @@
 */
 params ["_unit", "_threatASL", ["_delay", 0]];
 if (_delay > 0) then { sleep _delay };
-if (!alive _unit || {vehicle _unit != _unit} || {(_unit getVariable ["SAI_busyUntil", 0]) > time}) exitWith {};
+if (!alive _unit || {!isNull objectParent _unit} || {(_unit getVariable ["SAI_busyUntil", 0]) > time}) exitWith {};
 if (lifeState _unit == "INCAPACITATED") exitWith {};
 
 private _isLeader = leader _unit == _unit;

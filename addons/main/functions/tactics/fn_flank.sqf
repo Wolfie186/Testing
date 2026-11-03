@@ -33,7 +33,7 @@ if (_best isEqualTo []) exitWith { _grp setVariable ["SAI_nextFlank", _now + 30]
 
 // Split the group
 private _pool = (_units - [_leader]) select {
-    vehicle _x == _x && {(_x getVariable ["SAI_busyUntil", 0]) < _now} && {_x checkAIFeature "PATH"} && {lifeState _x != "INCAPACITATED"}
+    isNull objectParent _x && {(_x getVariable ["SAI_busyUntil", 0]) < _now} && {_x checkAIFeature "PATH"} && {lifeState _x != "INCAPACITATED"}
 };
 private _mgs = _pool select { [_x] call SAI_fnc_isMG };
 private _riflemen = _pool - _mgs;

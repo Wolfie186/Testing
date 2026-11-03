@@ -1,49 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project name="SAI">
     <Package name="main">
-        <Key ID="STR_SAI_cat_main">
-            <English>Smart AI</English>
-            <Russian>Smart AI</Russian>
+        <Key ID="STR_SAI_aceMedical">
+            <English>ACE: treat in combat</English>
+            <Russian>ACE: лечение в бою</Russian>
         </Key>
-        <Key ID="STR_SAI_cat_general">
-            <English>General</English>
-            <Russian>Общие</Russian>
+        <Key ID="STR_SAI_aceMedical_tip">
+            <English>With ACE medical: bandages, CPR, IV, epinephrine and morphine under fire. ACE's own AI medic still handles quiet moments.</English>
+            <Russian>С ACE medical: бинты, СЛР, капельницы, адреналин и морфин под огнём. Вне боя по-прежнему работает встроенный ИИ-медик ACE.</Russian>
         </Key>
-        <Key ID="STR_SAI_cat_skill">
-            <English>Skill</English>
-            <Russian>Навыки</Russian>
+        <Key ID="STR_SAI_aidRadius">
+            <English>Buddy aid radius (m)</English>
+            <Russian>Радиус помощи раненым (м)</Russian>
         </Key>
-        <Key ID="STR_SAI_cat_tactics">
-            <English>Tactics</English>
-            <Russian>Тактика</Russian>
+        <Key ID="STR_SAI_aidRadius_tip">
+            <English>How far a squad mate will run to help a wounded man.</English>
+            <Russian>Как далеко боец побежит к раненому.</Russian>
         </Key>
-        <Key ID="STR_SAI_cat_coord">
-            <English>Coordination</English>
-            <Russian>Взаимодействие</Russian>
+        <Key ID="STR_SAI_ambush">
+            <English>Ambushes</English>
+            <Russian>Засады</Russian>
         </Key>
-        <Key ID="STR_SAI_enabled">
-            <English>Enable Smart AI</English>
-            <Russian>Включить Smart AI</Russian>
+        <Key ID="STR_SAI_ambush_tip">
+            <English>Groups lie in wait on the enemy's predicted route and open fire together.</English>
+            <Russian>Группы ждут на прогнозируемом маршруте противника и открывают огонь одновременно.</Russian>
         </Key>
-        <Key ID="STR_SAI_enabled_tip">
-            <English>Master switch for all Smart AI behaviour.</English>
-            <Russian>Главный переключатель всего поведения Smart AI.</Russian>
+        <Key ID="STR_SAI_antiTank">
+            <English>Anti-tank tactics</English>
+            <Russian>Противотанковая тактика</Russian>
         </Key>
-        <Key ID="STR_SAI_debug">
-            <English>Debug mode</English>
-            <Russian>Режим отладки</Russian>
-        </Key>
-        <Key ID="STR_SAI_debug_tip">
-            <English>Map markers with each group's state and chat messages about decisions.</English>
-            <Russian>Маркеры на карте с состоянием групп и сообщения в чат о решениях ИИ.</Russian>
-        </Key>
-        <Key ID="STR_SAI_tick">
-            <English>Update interval (s)</English>
-            <Russian>Интервал обновления (с)</Russian>
-        </Key>
-        <Key ID="STR_SAI_tick_tip">
-            <English>How often every group re-evaluates the situation. Lower = more reactive, more CPU.</English>
-            <Russian>Как часто группы оценивают обстановку. Меньше = быстрее реакция, выше нагрузка.</Russian>
+        <Key ID="STR_SAI_antiTank_tip">
+            <English>AT gunners move to the side/rear of enemy vehicles before firing.</English>
+            <Russian>Гранатомётчики заходят в борт или корму техники перед выстрелом.</Russian>
         </Key>
         <Key ID="STR_SAI_applySkills">
             <English>Apply skill profile</English>
@@ -53,13 +41,61 @@
             <English>Human-like aim with high awareness. Disable to keep mission/server skills.</English>
             <Russian>Человеческая точность и высокая внимательность. Выключите, чтобы оставить навыки миссии/сервера.</Russian>
         </Key>
-        <Key ID="STR_SAI_skill">
-            <English>Shooting difficulty</English>
-            <Russian>Сложность стрельбы</Russian>
+        <Key ID="STR_SAI_buddyAid">
+            <English>Buddy aid</English>
+            <Russian>Помощь раненым</Russian>
         </Key>
-        <Key ID="STR_SAI_skill_tip">
-            <English>0.1 = poor shots, 1 = very dangerous. Tactics are smart at any value.</English>
-            <Russian>0.1 = стреляют плохо, 1 = очень опасны. Тактика умная при любом значении.</Russian>
+        <Key ID="STR_SAI_buddyAid_tip">
+            <English>Squad mates run to the wounded under smoke and treat them (vanilla or ACE medical).</English>
+            <Russian>Сослуживцы под дымом подбегают к раненым и лечат их (ванильная медицина или ACE).</Russian>
+        </Key>
+        <Key ID="STR_SAI_cat_command">
+            <English>Command</English>
+            <Russian>Командование</Russian>
+        </Key>
+        <Key ID="STR_SAI_cat_coord">
+            <English>Coordination</English>
+            <Russian>Взаимодействие</Russian>
+        </Key>
+        <Key ID="STR_SAI_cat_general">
+            <English>General</English>
+            <Russian>Общие</Russian>
+        </Key>
+        <Key ID="STR_SAI_cat_main">
+            <English>Smart AI</English>
+            <Russian>Smart AI</Russian>
+        </Key>
+        <Key ID="STR_SAI_cat_medical">
+            <English>Medical</English>
+            <Russian>Медицина</Russian>
+        </Key>
+        <Key ID="STR_SAI_cat_skill">
+            <English>Skill</English>
+            <Russian>Навыки</Russian>
+        </Key>
+        <Key ID="STR_SAI_cat_tactics">
+            <English>Tactics</English>
+            <Russian>Тактика</Russian>
+        </Key>
+        <Key ID="STR_SAI_cat_vehicles">
+            <English>Vehicles</English>
+            <Russian>Техника</Russian>
+        </Key>
+        <Key ID="STR_SAI_cmdTick">
+            <English>Commander interval (s)</English>
+            <Russian>Интервал командира (с)</Russian>
+        </Key>
+        <Key ID="STR_SAI_cmdTick_tip">
+            <English>How often the commander re-plans.</English>
+            <Russian>Как часто командир пересматривает план.</Russian>
+        </Key>
+        <Key ID="STR_SAI_commander">
+            <English>Side commander</English>
+            <Russian>Командир стороны</Russian>
+        </Key>
+        <Key ID="STR_SAI_commander_tip">
+            <English>Coordinates groups using only reported intel: envelopments, ambushes on your predicted route, cut-offs, AT hunts, second lines, reserves.</English>
+            <Russian>Координирует группы только по полученным разведданным: охваты, засады на прогнозируемом маршруте, отсечение, охота на бронетехнику, вторая линия, резерв.</Russian>
         </Key>
         <Key ID="STR_SAI_cover">
             <English>Seek cover</English>
@@ -69,13 +105,29 @@
             <English>Units under fire move to positions really hidden from the shooter.</English>
             <Russian>Под огнём бойцы перебегают в позиции, реально скрытые от стрелка.</Russian>
         </Key>
-        <Key ID="STR_SAI_suppression">
-            <English>Suppressive fire</English>
-            <Russian>Огонь на подавление</Russian>
+        <Key ID="STR_SAI_debug">
+            <English>Debug mode</English>
+            <Russian>Режим отладки</Russian>
         </Key>
-        <Key ID="STR_SAI_suppression_tip">
-            <English>Return fire and pin down the enemy, machine gunners first.</English>
-            <Russian>Ответный огонь и прижатие противника, в первую очередь пулемётчиками.</Russian>
+        <Key ID="STR_SAI_debug_tip">
+            <English>Map markers with each group's state and chat messages about decisions.</English>
+            <Russian>Маркеры на карте с состоянием групп и сообщения в чат о решениях ИИ.</Russian>
+        </Key>
+        <Key ID="STR_SAI_enabled">
+            <English>Enable Smart AI</English>
+            <Russian>Включить Smart AI</Russian>
+        </Key>
+        <Key ID="STR_SAI_enabled_tip">
+            <English>Master switch for all Smart AI behaviour.</English>
+            <Russian>Главный переключатель всего поведения Smart AI.</Russian>
+        </Key>
+        <Key ID="STR_SAI_fallback">
+            <English>Fall back</English>
+            <Russian>Отступление</Russian>
+        </Key>
+        <Key ID="STR_SAI_fallback_tip">
+            <English>Badly beaten squads retreat under cover and regroup instead of dying in place.</English>
+            <Russian>Сильно потрёпанные отделения отходят под прикрытием и перегруппировываются.</Russian>
         </Key>
         <Key ID="STR_SAI_flanking">
             <English>Flanking</English>
@@ -93,41 +145,17 @@
             <English>Throw frag grenades at close enemies hiding in cover or buildings.</English>
             <Russian>Бросать осколочные гранаты в близкого противника за укрытием или в здании.</Russian>
         </Key>
-        <Key ID="STR_SAI_smoke">
-            <English>Smoke</English>
-            <Russian>Дымы</Russian>
+        <Key ID="STR_SAI_heli">
+            <English>Helicopter AI</English>
+            <Russian>ИИ вертолётов</Russian>
         </Key>
-        <Key ID="STR_SAI_smoke_tip">
-            <English>Smoke screens when retreating or rescuing wounded.</English>
-            <Russian>Дымовая завеса при отходе и спасении раненых.</Russian>
-        </Key>
-        <Key ID="STR_SAI_fallback">
-            <English>Fall back</English>
-            <Russian>Отступление</Russian>
-        </Key>
-        <Key ID="STR_SAI_fallback_tip">
-            <English>Badly beaten squads retreat under cover and regroup instead of dying in place.</English>
-            <Russian>Сильно потрёпанные отделения отходят под прикрытием и перегруппировываются.</Russian>
-        </Key>
-        <Key ID="STR_SAI_search">
-            <English>Search for lost contact</English>
-            <Russian>Поиск потерянного противника</Russian>
-        </Key>
-        <Key ID="STR_SAI_search_tip">
-            <English>Check the last known enemy position instead of forgetting about him.</English>
-            <Russian>Проверять последнюю известную позицию противника, а не забывать о нём.</Russian>
-        </Key>
-        <Key ID="STR_SAI_buddyAid">
-            <English>Buddy aid</English>
-            <Russian>Помощь раненым</Russian>
+        <Key ID="STR_SAI_heli_tip">
+            <English>No landing in hot LZs, terrain masking near AA, gunships keep stand-off from launcher teams.</English>
+            <Russian>Не садятся в горячие зоны, летят низко при угрозе ПВО, ударные вертолёты держат дистанцию от расчётов ПЗРК/ПТРК.</Russian>
         </Key>
         <Key ID="STR_SAI_intel">
             <English>Share contact reports</English>
             <Russian>Обмен разведданными</Russian>
-        </Key>
-        <Key ID="STR_SAI_intel_tip">
-            <English>Groups report enemy positions to friendly groups in radio range.</English>
-            <Russian>Группы сообщают о противнике дружественным группам в радиусе связи.</Russian>
         </Key>
         <Key ID="STR_SAI_intelRadius">
             <English>Radio range (m)</English>
@@ -137,101 +165,9 @@
             <English>Range for contact reports.</English>
             <Russian>Дальность передачи разведданных.</Russian>
         </Key>
-        <Key ID="STR_SAI_reinforce">
-            <English>Reinforcements</English>
-            <Russian>Подкрепления</Russian>
-        </Key>
-        <Key ID="STR_SAI_reinforce_tip">
-            <English>Outnumbered groups call the nearest idle group for help.</English>
-            <Russian>Группы в меньшинстве вызывают ближайшую свободную группу на помощь.</Russian>
-        </Key>
-        <Key ID="STR_SAI_reinforceRadius">
-            <English>Reinforcement radius (m)</English>
-            <Russian>Радиус подкреплений (м)</Russian>
-        </Key>
-        <Key ID="STR_SAI_reinforceRadius_tip">
-            <English>How far away groups may answer a call for help.</English>
-            <Russian>С какого расстояния группы могут прийти на помощь.</Russian>
-        </Key>
-        <Key ID="STR_SAI_respectWaypoints">
-            <English>Respect mission waypoints</English>
-            <Russian>Не ломать вейпоинты миссии</Russian>
-        </Key>
-        <Key ID="STR_SAI_respectWaypoints_tip">
-            <English>Groups following mission waypoints still fight smart but are not sent elsewhere.</English>
-            <Russian>Группы на маршруте миссии воюют умно, но никуда не перенаправляются.</Russian>
-        </Key>
-        <Key ID="STR_SAI_cat_medical">
-            <English>Medical</English>
-            <Russian>Медицина</Russian>
-        </Key>
-        <Key ID="STR_SAI_buddyAid_tip">
-            <English>Squad mates run to the wounded under smoke and treat them (vanilla or ACE medical).</English>
-            <Russian>Сослуживцы под дымом подбегают к раненым и лечат их (ванильная медицина или ACE).</Russian>
-        </Key>
-        <Key ID="STR_SAI_selfAid">
-            <English>Self aid</English>
-            <Russian>Самопомощь</Russian>
-        </Key>
-        <Key ID="STR_SAI_selfAid_tip">
-            <English>If nobody can help, a conscious wounded man treats himself.</English>
-            <Russian>Если помочь некому, раненый в сознании лечит себя сам.</Russian>
-        </Key>
-        <Key ID="STR_SAI_aidRadius">
-            <English>Buddy aid radius (m)</English>
-            <Russian>Радиус помощи раненым (м)</Russian>
-        </Key>
-        <Key ID="STR_SAI_aidRadius_tip">
-            <English>How far a squad mate will run to help a wounded man.</English>
-            <Russian>Как далеко боец побежит к раненому.</Russian>
-        </Key>
-        <Key ID="STR_SAI_aceMedical">
-            <English>ACE: treat in combat</English>
-            <Russian>ACE: лечение в бою</Russian>
-        </Key>
-        <Key ID="STR_SAI_aceMedical_tip">
-            <English>With ACE medical: bandages, CPR, IV, epinephrine and morphine under fire. ACE's own AI medic still handles quiet moments.</English>
-            <Russian>С ACE medical: бинты, СЛР, капельницы, адреналин и морфин под огнём. Вне боя по-прежнему работает встроенный ИИ-медик ACE.</Russian>
-        </Key>
-        <Key ID="STR_SAI_cat_command">
-            <English>Command</English>
-            <Russian>Командование</Russian>
-        </Key>
-        <Key ID="STR_SAI_cat_vehicles">
-            <English>Vehicles</English>
-            <Russian>Техника</Russian>
-        </Key>
-        <Key ID="STR_SAI_commander">
-            <English>Side commander</English>
-            <Russian>Командир стороны</Russian>
-        </Key>
-        <Key ID="STR_SAI_commander_tip">
-            <English>Coordinates groups using only reported intel: envelopments, ambushes on your predicted route, cut-offs, AT hunts, second lines, reserves.</English>
-            <Russian>Координирует группы только по полученным разведданным: охваты, засады на прогнозируемом маршруте, отсечение, охота на бронетехнику, вторая линия, резерв.</Russian>
-        </Key>
-        <Key ID="STR_SAI_cmdTick">
-            <English>Commander interval (s)</English>
-            <Russian>Интервал командира (с)</Russian>
-        </Key>
-        <Key ID="STR_SAI_cmdTick_tip">
-            <English>How often the commander re-plans.</English>
-            <Russian>Как часто командир пересматривает план.</Russian>
-        </Key>
-        <Key ID="STR_SAI_ambush">
-            <English>Ambushes</English>
-            <Russian>Засады</Russian>
-        </Key>
-        <Key ID="STR_SAI_ambush_tip">
-            <English>Groups lie in wait on the enemy's predicted route and open fire together.</English>
-            <Russian>Группы ждут на прогнозируемом маршруте противника и открывают огонь одновременно.</Russian>
-        </Key>
-        <Key ID="STR_SAI_tacticalPathing">
-            <English>Concealed routes</English>
-            <Russian>Скрытные маршруты</Russian>
-        </Key>
-        <Key ID="STR_SAI_tacticalPathing_tip">
-            <English>Own route planner: avoids ground the enemy can see, prefers cover, avoids places where friendlies died.</English>
-            <Russian>Собственный планировщик: обходит просматриваемые противником участки, держится укрытий, избегает мест гибели своих.</Russian>
+        <Key ID="STR_SAI_intel_tip">
+            <English>Groups report enemy positions to friendly groups in radio range.</English>
+            <Russian>Группы сообщают о противнике дружественным группам в радиусе связи.</Russian>
         </Key>
         <Key ID="STR_SAI_memory">
             <English>Battlefield memory</English>
@@ -241,13 +177,61 @@
             <English>Remember where friendlies were killed and where the enemy fired from; recon by fire on old enemy positions.</English>
             <Russian>Запоминать, где гибли свои и откуда стрелял противник; разведка огнём по старым позициям противника.</Russian>
         </Key>
-        <Key ID="STR_SAI_antiTank">
-            <English>Anti-tank tactics</English>
-            <Russian>Противотанковая тактика</Russian>
+        <Key ID="STR_SAI_reinforce">
+            <English>Reinforcements</English>
+            <Russian>Подкрепления</Russian>
         </Key>
-        <Key ID="STR_SAI_antiTank_tip">
-            <English>AT gunners move to the side/rear of enemy vehicles before firing.</English>
-            <Russian>Гранатомётчики заходят в борт или корму техники перед выстрелом.</Russian>
+        <Key ID="STR_SAI_reinforceRadius">
+            <English>Reinforcement radius (m)</English>
+            <Russian>Радиус подкреплений (м)</Russian>
+        </Key>
+        <Key ID="STR_SAI_reinforceRadius_tip">
+            <English>How far away groups may answer a call for help.</English>
+            <Russian>С какого расстояния группы могут прийти на помощь.</Russian>
+        </Key>
+        <Key ID="STR_SAI_reinforce_tip">
+            <English>Outnumbered groups call the nearest idle group for help.</English>
+            <Russian>Группы в меньшинстве вызывают ближайшую свободную группу на помощь.</Russian>
+        </Key>
+        <Key ID="STR_SAI_respectWaypoints">
+            <English>Respect mission waypoints</English>
+            <Russian>Не ломать вейпоинты миссии</Russian>
+        </Key>
+        <Key ID="STR_SAI_respectWaypoints_tip">
+            <English>Groups following mission waypoints still fight smart but are not sent elsewhere.</English>
+            <Russian>Группы на маршруте миссии воюют умно, но никуда не перенаправляются.</Russian>
+        </Key>
+        <Key ID="STR_SAI_search">
+            <English>Search for lost contact</English>
+            <Russian>Поиск потерянного противника</Russian>
+        </Key>
+        <Key ID="STR_SAI_search_tip">
+            <English>Check the last known enemy position instead of forgetting about him.</English>
+            <Russian>Проверять последнюю известную позицию противника, а не забывать о нём.</Russian>
+        </Key>
+        <Key ID="STR_SAI_selfAid">
+            <English>Self aid</English>
+            <Russian>Самопомощь</Russian>
+        </Key>
+        <Key ID="STR_SAI_selfAid_tip">
+            <English>If nobody can help, a conscious wounded man treats himself.</English>
+            <Russian>Если помочь некому, раненый в сознании лечит себя сам.</Russian>
+        </Key>
+        <Key ID="STR_SAI_skill">
+            <English>Shooting difficulty</English>
+            <Russian>Сложность стрельбы</Russian>
+        </Key>
+        <Key ID="STR_SAI_skill_tip">
+            <English>0.1 = poor shots, 1 = very dangerous. Tactics are smart at any value.</English>
+            <Russian>0.1 = стреляют плохо, 1 = очень опасны. Тактика умная при любом значении.</Russian>
+        </Key>
+        <Key ID="STR_SAI_smoke">
+            <English>Smoke</English>
+            <Russian>Дымы</Russian>
+        </Key>
+        <Key ID="STR_SAI_smoke_tip">
+            <English>Smoke screens when retreating or rescuing wounded.</English>
+            <Russian>Дымовая завеса при отходе и спасении раненых.</Russian>
         </Key>
         <Key ID="STR_SAI_statics">
             <English>Use static weapons</English>
@@ -257,21 +241,29 @@
             <English>Squads in combat man empty static weapons nearby that can see the enemy.</English>
             <Russian>Отделения в бою занимают пустое станковое оружие рядом, если оттуда видно противника.</Russian>
         </Key>
-        <Key ID="STR_SAI_vehicles">
-            <English>Vehicle AI</English>
-            <Russian>ИИ техники</Russian>
+        <Key ID="STR_SAI_suppression">
+            <English>Suppressive fire</English>
+            <Russian>Огонь на подавление</Russian>
         </Key>
-        <Key ID="STR_SAI_vehicles_tip">
-            <English>Master switch for all vehicle behaviour.</English>
-            <Russian>Главный переключатель поведения техники.</Russian>
+        <Key ID="STR_SAI_suppression_tip">
+            <English>Return fire and pin down the enemy, machine gunners first.</English>
+            <Russian>Ответный огонь и прижатие противника, в первую очередь пулемётчиками.</Russian>
         </Key>
-        <Key ID="STR_SAI_vehHullDown">
-            <English>Hull-down and shoot-and-scoot</English>
-            <Russian>Позиции из-за гребня и смена позиций</Russian>
+        <Key ID="STR_SAI_tacticalPathing">
+            <English>Concealed routes</English>
+            <Russian>Скрытные маршруты</Russian>
         </Key>
-        <Key ID="STR_SAI_vehHullDown_tip">
-            <English>Armour fights from hull-down positions at stand-off range, relocates after firing or being hit, backs off from AT teams.</English>
-            <Russian>Бронетехника стреляет из-за укрытия рельефа с дистанции, меняет позицию после выстрелов и попаданий, отходит от гранатомётчиков.</Russian>
+        <Key ID="STR_SAI_tacticalPathing_tip">
+            <English>Own route planner: avoids ground the enemy can see, prefers cover, avoids places where friendlies died.</English>
+            <Russian>Собственный планировщик: обходит просматриваемые противником участки, держится укрытий, избегает мест гибели своих.</Russian>
+        </Key>
+        <Key ID="STR_SAI_tick">
+            <English>Update interval (s)</English>
+            <Russian>Интервал обновления (с)</Russian>
+        </Key>
+        <Key ID="STR_SAI_tick_tip">
+            <English>How often every group re-evaluates the situation. Lower = more reactive, more CPU.</English>
+            <Russian>Как часто группы оценивают обстановку. Меньше = быстрее реакция, выше нагрузка.</Russian>
         </Key>
         <Key ID="STR_SAI_vehDismount">
             <English>Dismount in cover</English>
@@ -281,13 +273,21 @@
             <English>Transports stop in dead ground before the enemy and unload troops there.</English>
             <Russian>Транспорт останавливается в мёртвой зоне перед противником и высаживает десант там.</Russian>
         </Key>
-        <Key ID="STR_SAI_heli">
-            <English>Helicopter AI</English>
-            <Russian>ИИ вертолётов</Russian>
+        <Key ID="STR_SAI_vehHullDown">
+            <English>Hull-down and shoot-and-scoot</English>
+            <Russian>Позиции из-за гребня и смена позиций</Russian>
         </Key>
-        <Key ID="STR_SAI_heli_tip">
-            <English>No landing in hot LZs, terrain masking near AA, gunships keep stand-off from launcher teams.</English>
-            <Russian>Не садятся в горячие зоны, летят низко при угрозе ПВО, ударные вертолёты держат дистанцию от расчётов ПЗРК/ПТРК.</Russian>
+        <Key ID="STR_SAI_vehHullDown_tip">
+            <English>Armour fights from hull-down positions at stand-off range, relocates after firing or being hit, backs off from AT teams.</English>
+            <Russian>Бронетехника стреляет из-за укрытия рельефа с дистанции, меняет позицию после выстрелов и попаданий, отходит от гранатомётчиков.</Russian>
+        </Key>
+        <Key ID="STR_SAI_vehicles">
+            <English>Vehicle AI</English>
+            <Russian>ИИ техники</Russian>
+        </Key>
+        <Key ID="STR_SAI_vehicles_tip">
+            <English>Master switch for all vehicle behaviour.</English>
+            <Russian>Главный переключатель поведения техники.</Russian>
         </Key>
     </Package>
 </Project>

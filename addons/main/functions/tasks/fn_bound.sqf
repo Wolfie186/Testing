@@ -5,7 +5,7 @@
 */
 params ["_grp", "_targetPos", ["_timeout", 120]];
 private _end = time + _timeout;
-private _units = (units _grp) select {alive _x && {vehicle _x == _x} && {_x checkAIFeature "PATH"} && {lifeState _x != "INCAPACITATED"}};
+private _units = (units _grp) select {alive _x && {isNull objectParent _x} && {_x checkAIFeature "PATH"} && {lifeState _x != "INCAPACITATED"}};
 if (count _units < 2) exitWith {};
 private _teams = [[], []];
 { (_teams select (_forEachIndex % 2)) pushBack _x } forEach _units;

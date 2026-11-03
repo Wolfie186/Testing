@@ -18,7 +18,7 @@ private _leader = leader _grp;
 private _now = time;
 private _prevState = _grp getVariable ["SAI_state", "SAFE"];
 private _state = _prevState;
-private _onFoot = vehicle _leader == _leader;
+private _onFoot = isNull objectParent _leader;
 private _canFire = combatMode _grp in ["YELLOW", "RED"];
 (_grp getVariable ["SAI_profile", [0.5, 0.5, 0.5]]) params ["_aggr", "_caut", "_disc"];
 
@@ -32,7 +32,7 @@ if (_fm isNotEqualTo []) then {
     _grp setVariable ["SAI_fireMission", []];
     if (_canFire && {_onFoot}) then {
         private _p = AGLToASL (_fm select 0);
-        { if (vehicle _x == _x && {(_x getVariable ["SAI_busyUntil", 0]) < _now}) then { [_x, _p] spawn SAI_fnc_suppressFire } } forEach _units;
+        { if (isNull objectParent _x && {(_x getVariable ["SAI_busyUntil", 0]) < _now}) then { [_x, _p] spawn SAI_fnc_suppressFire } } forEach _units;
         ["Group %1 fire mission!", groupId _grp] call SAI_fnc_log;
     };
 };

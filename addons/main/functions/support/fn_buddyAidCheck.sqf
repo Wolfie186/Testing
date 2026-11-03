@@ -22,7 +22,7 @@ private _hasKit = if (_ace) then {
 
 private _wounded = [];
 {
-    if (vehicle _x == _x && {!(_x getVariable ["SAI_beingTreated", false])}) then {
+    if (isNull objectParent _x && {!(_x getVariable ["SAI_beingTreated", false])}) then {
         private _s = _x call _severity;
         if (_s > 0) then { _wounded pushBack [-_s, _x distance (leader _grp), _x] };
     };
@@ -33,7 +33,7 @@ private _w = _wounded select 0 select 2;
 private _wSeverity = -(_wounded select 0 select 0);
 
 private _medics = (_units - [_w]) select {
-    vehicle _x == _x
+    isNull objectParent _x
     && {(_x getVariable ["SAI_busyUntil", 0]) < _now}
     && {lifeState _x != "INCAPACITATED"}
     && {(_x call _severity) < 2}

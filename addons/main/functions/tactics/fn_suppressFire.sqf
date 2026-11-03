@@ -3,7 +3,7 @@
     Pin the enemy down: fire bursts into an area instead of waiting for a clean shot.
 */
 params ["_unit", "_target"];
-if (!alive _unit || {vehicle _unit != _unit} || {primaryWeapon _unit == ""}) exitWith {};
+if (!alive _unit || {!isNull objectParent _unit} || {primaryWeapon _unit == ""}) exitWith {};
 if (lifeState _unit == "INCAPACITATED") exitWith {};
 if ((_unit ammo primaryWeapon _unit) == 0 && {primaryWeaponMagazine _unit isEqualTo []}) exitWith {};
 

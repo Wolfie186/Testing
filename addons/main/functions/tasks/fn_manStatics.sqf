@@ -11,7 +11,7 @@ private _statics = (nearestObjects [getPosATL leader _grp, ["StaticWeapon"], 70]
 if (_statics isEqualTo []) exitWith {};
 private _st = _statics select 0;
 private _cands = (_units - [leader _grp]) select {
-    vehicle _x == _x && {(_x getVariable ["SAI_busyUntil", 0]) < _now} && {!([_x] call SAI_fnc_isMG)} && {([_x] call SAI_fnc_launcherType) == ""} && {_x checkAIFeature "PATH"}
+    isNull objectParent _x && {(_x getVariable ["SAI_busyUntil", 0]) < _now} && {!([_x] call SAI_fnc_isMG)} && {([_x] call SAI_fnc_launcherType) == ""} && {_x checkAIFeature "PATH"}
 };
 if (_cands isEqualTo []) exitWith {};
 private _s = _cands apply { [_x distance _st, _x] };
